@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAREN</title>
+<style>
+  :root {
+    --bg: #060b1a;
+    --bg2: #0a1226;
+    --panel: #0d1730;
+    --panel2: #101c3a;
+    --border: #1b2a4d;
+    --accent: #3b82f6;
+    --accent2: #60a5fa;
+    --cyan: #22d3ee;
+    --texto: #e2e8f0;
+    --dim: #7c8db5;
+    --ok: #34d399;
+    --alerta: #f87171;
+    --user-bubble: linear-gradient(135deg, #1e3a8a, #2563eb);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(37,99,235,0.12), transparent 60%),
+      radial-gradient(800px 500px at 100% 110%, rgba(34,211,238,0.05), transparent 60%),
+      var(--bg);
+    color: var(--texto);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+  }
+
+  /* ── cabecera ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(6,11,26,0.85);
+    backdrop-filter: blur(8px);
+    flex-shrink: 0;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-orb {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #60a5fa, #1d4ed8 70%, #172554);
+    box-shadow: 0 0 18px rgba(59,130,246,0.55), inset 0 0 8px rgba(255,255,255,0.25);
+    flex-shrink: 0;
+    position: relative;
+  }
+  .logo-orb::after {
+    content: ""; position: absolute; inset: 9px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #dbeafe, #3b82f6 70%);
+    opacity: .85;
+  }
+  .logo-orb.pulse { animation: orbPulse 1.6s ease-in-out infinite; }
+  @keyframes orbPulse {
+    0%,100% { box-shadow: 0 0 18px rgba(59,130,246,0.55); }
+    50% { box-shadow: 0 0 30px rgba(59,130,246,0.9); }
+  }
+  .brand h1 {
+    font-size: 17px; font-weight: 700; letter-spacing: 6px;
+    color: #dbeafe;
+  }
+  .brand h1 span { color: var(--accent2); }
+
+  .estado {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; letter-spacing: 1.6px; color: var(--dim);
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(13,23,48,0.6);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #64748b;
+    flex-shrink: 0;
+  }
+  .dot.reposo { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); animation: blink 2.6s ease-in-out infinite; }
+  .dot.activo { background: var(--accent2); box-shadow: 0 0 12px var(--accent2); animation: blink 0.9s ease-in-out infinite; }
+  .dot.hablando { background: #f472b6; box-shadow: 0 0 12px #f472b6; animation: blink 0.55s ease-in-out infinite; }
+  .dot.procesando { background: #fbbf24; box-shadow: 0 0 12px #fbbf24; animation: blink 0.45s ease-in-out infinite; }
+  .dot.off { background: var(--alerta); box-shadow: 0 0 10px var(--alerta); animation: none; }
+  @keyframes blink {
+    0%,100% { opacity: 1; } 50% { opacity: .35; }
+  }
+
+  .header-right {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .clock {
+    font-family: Consolas, monospace; font-size: 12px;
+    letter-spacing: 1px; color: var(--dim);
+  }
+  .icon-btn {
+    background: rgba(13,23,48,0.7);
+    border: 1px solid var(--border);
+    color: var(--dim);
+    border-radius: 10px;
+    padding: 7px 9px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: .15s;
+    line-height: 1;
+  }
+  .icon-btn:hover { color: var(--texto); border-color: var(--accent); box-shadow: 0 0 12px rgba(59,130,246,0.25); }
+
+  /* ── zona de chat ── */
+  main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  #chat {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 22px 6px;
+    scroll-behavior: smooth;
+  }
+  #chat::-webkit-scrollbar { width: 10px; }
+  #chat::-webkit-scrollbar-track { background: transparent; }
+  #chat::-webkit-scrollbar-thumb {
+    background: #1e2c4e; border-radius: 999px; border: 2px solid var(--bg);
+  }
+  #chat::-webkit-scrollbar-thumb:hover { background: #2b3f6b; }
+
+  .msg {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+    animation: fadeIn .25s ease-out;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .msg .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+  }
+  .msg.karen .avatar {
+    background: radial-gradient(circle at 35% 30%, #60a5fa, #1d4ed8 70%, #172554);
+    color: #dbeafe;
+    box-shadow: 0 0 12px rgba(59,130,246,0.4);
+  }
+  .msg.user { flex-direction: row-reverse; }
+  .msg.user .avatar {
+    background: #1e293b; color: var(--accent2);
+    border: 1px solid var(--border);
+  }
+
+  .burbuja {
+    max-width: min(620px, 78%);
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    user-select: text;
+  }
+  .msg.karen .burbuja {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+    color: #dbe6f8;
+  }
+  .msg.user .burbuja {
+    background: var(--user-bubble);
+    border-top-right-radius: 4px;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(37,99,235,0.25);
+  }
+  .msg.sys { justify-content: center; margin-bottom: 8px; }
+  .msg.sys .burbuja {
+    background: transparent;
+    border: none;
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    padding: 2px 10px;
+  }
+
+  .typing { display: inline-flex; gap: 4px; align-items: center; }
+  .typing i {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent2);
+    animation: typing 1s ease-in-out infinite;
+  }
+  .typing i:nth-child(2) { animation-delay: .15s; }
+  .typing i:nth-child(3) { animation-delay: .3s; }
+  @keyframes typing { 0%,100% { opacity: .3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+
+  .nivel-bar {
+    height: 3px; border-radius: 999px;
+    margin: 6px 0 0;
+    background: rgba(255,255,255,0.07);
+    overflow: hidden;
+  }
+  .nivel-bar > i {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--cyan));
+    transition: width .06s linear;
+  }
+
+  /* ── chips de sugerencias ── */
+  .sugerencias {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    padding: 4px 22px 10px;
+    justify-content: center;
+  }
+  .sugerencias.hidden { display: none; }
+  .chip {
+    font-size: 12px; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    background: rgba(13,23,48,0.6);
+    cursor: pointer; transition: .15s;
+    user-select: none;
+  }
+  .chip:hover {
+    color: var(--texto); border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(59,130,246,0.2);
+  }
+  .chip.color { width: 24px; height: 24px; padding: 0; border-radius: 50%; }
+  .chip .cname { font-size: 10px; margin-left: 4px; }
+
+  /* ── barra de entrada ── */
+  .chatbar {
+    padding: 12px 22px 20px;
+    flex-shrink: 0;
+  }
+  .chat-box {
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid #24375f;
+    border-radius: 16px;
+    padding: 12px 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
+    transition: border-color .2s;
+  }
+  .chat-box:focus-within { border-color: var(--accent); box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(59,130,246,0.15); }
+  .mic-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #64748b; flex-shrink: 0;
+  }
+  .mic-dot.reposo { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: blink 2.4s ease-in-out infinite; }
+  .mic-dot.activo { background: var(--alerta); box-shadow: 0 0 10px var(--alerta); animation: blink .8s ease-in-out infinite; }
+  .mic-dot.hablando { background: #f472b6; box-shadow: 0 0 10px #f472b6; animation: blink .6s ease-in-out infinite; }
+  .chat-box input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--texto); font-size: 14px; font-family: inherit;
+    min-width: 0;
+  }
+  .chat-box input::placeholder { color: #4c5f8f; }
+  .chat-box button {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border: none; color: #fff;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; letter-spacing: .5px;
+    font-family: inherit; padding: 8px 16px; border-radius: 10px;
+    transition: .15s; flex-shrink: 0;
+  }
+  .chat-box button:hover { box-shadow: 0 0 16px rgba(59,130,246,0.5); transform: translateY(-1px); }
+
+  /* ── panel lateral de ajustes ── */
+  #overlay {
+    position: fixed; inset: 0; z-index: 20;
+    background: rgba(2,6,18,0.6);
+    backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none;
+    transition: opacity .2s;
+  }
+  #overlay.open { opacity: 1; pointer-events: auto; }
+  aside {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 21;
+    width: 300px;
+    background: #0a1226;
+    border-left: 1px solid var(--border);
+    box-shadow: -20px 0 60px rgba(0,0,0,0.5);
+    transform: translateX(102%);
+    transition: transform .25s ease;
+    padding: 18px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  aside.open { transform: none; }
+  aside::-webkit-scrollbar { width: 8px; }
+  aside::-webkit-scrollbar-thumb { background: #1e2c4e; border-radius: 999px; }
+  aside h3 {
+    font-size: 11px; letter-spacing: 2.4px; text-transform: uppercase;
+    color: var(--accent2); margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  aside h3 .x {
+    cursor: pointer; color: var(--dim); font-size: 15px; padding: 2px 6px;
+    border-radius: 6px; user-select: none;
+  }
+  aside h3 .x:hover { color: var(--texto); background: rgba(255,255,255,0.06); }
+  .widget {
+    background: rgba(13,23,48,0.75);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--dim); padding: 4px 0;
+  }
+  .row b { color: var(--texto); font-weight: 600; }
+  .m-row {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 6px; padding: 4px 0; font-size: 12px; color: var(--dim);
+  }
+  .m-row select {
+    background: var(--bg2); color: var(--texto);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 4px 6px; font-size: 11px; font-family: inherit;
+    max-width: 132px; outline: none; cursor: pointer;
+  }
+  .m-row select:disabled { opacity: .38; cursor: not-allowed; }
+  .m-dots { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .m-dot {
+    font-size: 9px; letter-spacing: .5px; padding: 3px 7px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--dim);
+  }
+  .m-dot.on { color: var(--ok); border-color: rgba(52,211,153,.45); box-shadow: 0 0 8px rgba(52,211,153,.25); }
+  .hint { font-size: 11px; color: var(--dim); line-height: 1.55; opacity: .9; }
+  .hint b { color: var(--texto); }
+  .acciones-fila { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .acciones-fila .chip { font-size: 11px; padding: 4px 10px; }
+
+  .aviso-conexion {
+    text-align: center; font-size: 12px; color: var(--alerta);
+    padding: 14px; display: none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo-orb" id="orb"></div>
+    <h1>K<span>AREN</span></h1>
+  </div>
+  <div class="estado">
+    <span class="dot reposo" id="dot"></span>
+    <span id="sp-txt">Escuchando</span>
+  </div>
+  <div class="header-right">
+    <span class="clock" id="clock"></span>
+    <button class="icon-btn" id="btn-panel" title="Ajustes">⚙</button>
+  </div>
+</header>
+
+<main>
+  <div id="chat"></div>
+  <div class="aviso-conexion" id="aviso-conexion">Sin conexión con el núcleo de Karen…</div>
+  <div class="sugerencias" id="sugerencias">
+    <span class="chip" onclick="cmd('qué hora es')">🕐 hora</span>
+    <span class="chip" onclick="cmd('cómo estás')">💙 ánimo</span>
+    <span class="chip" onclick="cmd('estado del pc')">🖥 pc</span>
+    <span class="chip" onclick="cmd('abre el bloc de notas')">📝 notepad</span>
+    <span class="chip" onclick="cmd('abre youtube')">▶ youtube</span>
+  </div>
+  <div class="chatbar">
+    <div class="chat-box">
+      <span class="mic-dot reposo" id="mic-dot"></span>
+      <input id="input" placeholder="Hablar con Karen…" autocomplete="off">
+      <button id="btn-enviar">enviar</button>
+    </div>
+  </div>
+</main>
+
+<div id="overlay"></div>
+<aside id="panel">
+  <h3>KAREN <span class="x" onclick="cerrarPanel()">✕</span></h3>
+
+  <div class="widget">
+    <h3>Sistema</h3>
+    <div class="row"><span>CPU / RAM</span><b id="w-sys">—</b></div>
+    <div class="row"><span>Disco</span><b id="w-disk">—</b></div>
+    <div class="row"><span>Batería</span><b id="w-bat">—</b></div>
+    <div class="row"><span>Mic</span><b id="w-mic">—</b></div>
+    <div class="row"><span>LLM</span><b id="w-model">—</b></div>
+  </div>
+
+  <div class="widget" id="w-motores">
+    <h3>Motores IA</h3>
+    <div class="m-row" data-seccion="general"><span>General</span><select onchange="setMotor('general',this.value)"></select></div>
+    <div class="m-row" data-seccion="codigo"><span>Código</span><select onchange="setMotor('codigo',this.value)"></select></div>
+    <div class="m-row" data-seccion="creativo"><span>Creativo</span><select onchange="setMotor('creativo',this.value)"></select></div>
+    <div class="m-row" data-seccion="mundo"><span>Mundo</span><select onchange="setMotor('mundo',this.value)"></select></div>
+    <div class="m-dots" id="w-motores-dots"></div>
+  </div>
+
+  <div class="widget">
+    <h3>Voces</h3>
+    <div class="row"><span>Activa</span><b id="w-voz">—</b></div>
+    <div class="row"><span>Muestras normal</span><b id="w-voz-n">0</b></div>
+    <div class="row"><span>Muestras cris</span><b id="w-voz-c">0</b></div>
+    <div class="acciones-fila">
+      <span class="chip" onclick="enrollVoz('normal')">+ voz normal</span>
+      <span class="chip" onclick="enrollVoz('cris')">+ voz cris</span>
+    </div>
+  </div>
+
+  <div class="widget">
+    <h3>Luces</h3>
+    <div class="acciones-fila">
+      <span class="chip color" style="background:#0040ff" onclick="luz(0,64,255)" title="azul"></span>
+      <span class="chip color" style="background:#ff1414" onclick="luz(255,20,20)" title="rojo"></span>
+      <span class="chip color" style="background:#00ff50" onclick="luz(0,255,80)" title="verde"></span>
+      <span class="chip color" style="background:#ff28a0" onclick="luz(255,40,160)" title="rosa"></span>
+      <span class="chip color" style="background:#ffffff" onclick="luz(255,255,255)" title="blanco"></span>
+      <span class="chip" onclick="apagarLuces()">off</span>
+    </div>
+  </div>
+
+  <div class="widget">
+    <h3>Atajos</h3>
+    <div class="hint">Di <b>Karen</b> y luego el comando.<br>
+    «qué hora es» · «cómo estás» · «estado del pc» · «memoriza mi voz normal / cris»</div>
+  </div>
+</aside>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ═══════════════ RELOJ ═══════════════
+function tickClock() {
+  const d = new Date();
+  $("clock").textContent = d.toLocaleTimeString("es-MX", {hour: "2-digit", minute: "2-digit"});
+}
+setInterval(tickClock, 5000); tickClock();
+
+// ═══════════════ CHAT ═══════════════
+const chat = $("chat");
+let ultimoHablar = null;   // burbuja "viva" mientras Karen habla
+
+function escapar(t) {
+  return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function scrollAbajo() {
+  chat.scrollTop = chat.scrollHeight;
+}
+function addSys(texto) {
+  const d = document.createElement("div");
+  d.className = "msg sys";
+  d.innerHTML = '<div class="burbuja">' + escapar(texto) + "</div>";
+  chat.appendChild(d);
+  scrollAbajo();
+}
+function addKaren(texto, vivo) {
+  if (ultimoHablar && vivo) {
+    ultimoHablar.querySelector(".burbuja").innerHTML = escapar(texto);
+    scrollAbajo();
+    return ultimoHablar;
+  }
+  const d = document.createElement("div");
+  d.className = "msg karen";
+  d.innerHTML = '<div class="avatar">K</div><div class="burbuja">' + escapar(texto) + "</div>";
+  chat.appendChild(d);
+  scrollAbajo();
+  return d;
+}
+function addUser(texto) {
+  const d = document.createElement("div");
+  d.className = "msg user";
+  d.innerHTML = '<div class="avatar">L</div><div class="burbuja">' + escapar(texto) + "</div>";
+  chat.appendChild(d);
+  scrollAbajo();
+  return d;
+}
+function addPensando() {
+  const d = document.createElement("div");
+  d.className = "msg karen";
+  d.innerHTML = '<div class="avatar">K</div><div class="burbuja"><span class="typing"><i></i><i></i><i></i></span></div>';
+  chat.appendChild(d);
+  scrollAbajo();
+  return d;
+}
+function quitarPensando(el) { if (el && el.parentNode) el.parentNode.removeChild(el); }
+
+function limpiarWake(t) {
+  return t.replace(/^\s*(karen|caren|karin|karem|karren|jarvis)[\s,;:.\u00a1\u00bf!?]*/i, "").trim();
+}
+
+// Saludo inicial
+addKaren("Hola, soy Karen. Di «Karen» y luego lo que necesites, o escríbeme aquí abajo.", false);
+
+// ═══════════════ WEBSOCKET ═══════════════
+let ws = null, wsReconecta = null;
+
+function conectar() {
+  ws = new WebSocket("ws://" + location.host + "/ws");
+  ws.onopen = () => { $("aviso-conexion").style.display = "none"; };
+  ws.onclose = () => {
+    $("aviso-conexion").style.display = "block";
+    clearTimeout(wsReconecta);
+    wsReconecta = setTimeout(conectar, 2500);
+  };
+  ws.onmessage = e => {
+    let m;
+    try { m = JSON.parse(e.data); } catch (_) { return; }
+    manejar(m);
+  };
+}
+
+function setEstado(txt) {
+  $("sp-txt").textContent = txt;
+}
+function setDot(modo) {
+  const dot = $("dot"), md = $("mic-dot");
+  dot.className = "dot";
+  md.className = "mic-dot";
+  if (modo) { dot.classList.add(modo); md.classList.add(modo); }
+  const orb = $("orb");
+  orb.classList.toggle("pulse", modo === "activo" || modo === "hablando" || modo === "procesando");
+}
+
+function manejar(m) {
+  const d = m.datos;
+  if (m.tipo === "mood") {
+    if (d && d.icono && $("orb")) { /* el orbe respira con el ánimo */ }
+  } else if (m.tipo === "nivel") {
+    const bar = chat.lastElementChild && chat.lastElementChild.querySelector(".nivel-bar > i");
+    const v = (d && d.v) || 0;
+    if (bar) bar.style.width = Math.min(100, Math.round(v * 220)) + "%";
+  } else if (m.tipo === "hablando") {
+    setDot(Boolean(d) ? "hablando" : null);
+    if (!d) { ultimoHablar = null; }
+  } else if (m.tipo === "boca") {
+    const txt = String(d || "").trim();
+    if (txt) { ultimoHablar = addKaren(txt, true); }
+  } else if (m.tipo === "oido") {
+    const txt = limpiarWake(String(d || "").trim());
+    if (txt) addUser(txt);
+  } else if (m.tipo === "mic_status") {
+    const modo = (d && d.modo) || "";
+    if (modo === "activo") {
+      setDot("activo");
+      setEstado("Te oigo");
+    } else if (modo === "procesando") {
+      setDot("procesando");
+      setEstado("Procesando…");
+    } else if (modo === "off") {
+      setDot("off");
+      setEstado("Sin micrófono");
+    } else {
+      setDot("reposo");
+      setEstado("Escuchando");
+    }
+    if (d && d.mic) $("w-mic").textContent = String(d.mic).slice(0, 22);
+  } else if (m.tipo === "estado") {
+    const t = typeof d === "string" ? d : (d && d.msg) || String(d || "");
+    const low = t.toLowerCase();
+    if (low.includes("procesando") || low.includes("cargando")) {
+      setDot("procesando"); setEstado("Procesando…");
+    } else if (low.includes("te oigo")) {
+      setDot("activo"); setEstado("Te oigo");
+    } else if (low.includes("te escucho")) {
+      setDot("activo"); setEstado("Te escucho");
+    } else if (low.includes("error") || low.includes("sin mic")) {
+      setDot("off"); setEstado("Error mic");
+    } else if (low.includes("escuchando") || low.includes("reposo") || low.includes("mic listo")) {
+      setDot("reposo"); setEstado("Escuchando");
+    } else {
+      setEstado(t.slice(0, 30));
+    }
+  } else if (m.tipo === "voz_perfil") {
+    const perfil = ((d && (d.perfil || d.activo)) || "normal").toLowerCase();
+    $("w-voz").textContent = perfil === "cris" ? "CRIS" : "LUIS";
+    const perfiles = (d && d.perfiles) || {};
+    $("w-voz-n").textContent = String((perfiles.normal && perfiles.normal.muestras) || 0);
+    $("w-voz-c").textContent = String((perfiles.cris && perfiles.cris.muestras) || 0);
+  }
+}
+
+// ═══════════════ COMANDOS ═══════════════
+function cmd(texto) {
+  texto = (texto || "").trim();
+  if (!texto) return;
+  addUser(texto);
+  $("sugerencias").classList.add("hidden");
+  const pensando = addPensando();
+  setEstado("Procesando…");
+  fetch("/comando", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({texto})
+  }).then(r => r.json()).then(d => {
+    quitarPensando(pensando);
+    if (d && d.respuesta) {
+      addKaren(d.respuesta, false);
+      setDot("hablando");
+      setEstado("Karen");
+      ultimoHablar = null;
+      setTimeout(() => { setDot("reposo"); setEstado("Escuchando"); }, 3000);
+    }
+  }).catch(() => {
+    quitarPensando(pensando);
+    addSys("Sin conexión con el núcleo.");
+  });
+}
+function enviar() {
+  const txt = $("input").value.trim();
+  if (!txt) return;
+  $("input").value = "";
+  cmd(txt);
+}
+$("input").addEventListener("keydown", e => { if (e.key === "Enter") enviar(); });
+$("btn-enviar").addEventListener("click", enviar);
+
+// ═══════════════ PANEL LATERAL ═══════════════
+function abrirPanel() {
+  $("panel").classList.add("open");
+  $("overlay").classList.add("open");
+  refreshSys(); refreshLLM(); refreshVoz();
+}
+function cerrarPanel() {
+  $("panel").classList.remove("open");
+  $("overlay").classList.remove("open");
+}
+$("btn-panel").addEventListener("click", abrirPanel);
+$("overlay").addEventListener("click", cerrarPanel);
+document.addEventListener("keydown", e => { if (e.key === "Escape") cerrarPanel(); });
+
+// ═══════════════ SISTEMA + MOTORES ═══════════════
+const MOTORES = {
+  auto: "Auto", gemini: "Gemini", groq: "Groq",
+  openrouter: "OpenRouter", claude: "Claude", ollama: "Ollama"
+};
+
+function refreshSys() {
+  fetch("/stats").then(r => r.json()).then(d => {
+    if (!d || !d.ok) return;
+    const ram = d.ram || {}, disco = d.disco || {}, bat = d.bateria || {};
+    $("w-sys").textContent = d.cpu + "% / " + (ram.uso != null ? ram.uso : "--") + "%";
+    $("w-disk").textContent = (disco.uso != null ? disco.uso + "%" : "—") + (disco.total_gb ? " · " + disco.total_gb + "GB" : "");
+    $("w-bat").textContent = bat.porcentaje == null ? "—" : bat.porcentaje + "%" + (bat.enchufado ? " ⚡" : "");
+  }).catch(() => {});
+}
+setInterval(refreshSys, 4000);
+
+function refreshLLM() {
+  fetch("/llm/estado").then(r => r.json()).then(d => {
+    if (!d || !d.ok) return;
+    const disp = d.disponibles || [];
+    const lat = d.latencias || {};
+    const motores = d.motores || {};
+    $("w-model").textContent = (d.ultimo || "ninguno") + (d.ms ? " · " + d.ms + "ms" : "");
+    document.querySelectorAll("#w-motores .m-row").forEach(row => {
+      const sec = row.dataset.seccion;
+      const sel = row.querySelector("select");
+      if (!sel) return;
+      if (sel.options.length !== Object.keys(MOTORES).length) {
+        sel.innerHTML = "";
+        Object.keys(MOTORES).forEach(k => {
+          const op = document.createElement("option");
+          op.value = k;
+          op.textContent = MOTORES[k] + (k !== "auto" && lat[k] != null ? " · " + lat[k] + "ms" : "");
+          op.disabled = k !== "auto" && !disp.includes(k);
+          sel.appendChild(op);
+        });
+      }
+      const actual = motores[sec] || "auto";
+      sel.value = (actual === "auto" || disp.includes(actual)) ? actual : "auto";
+    });
+    const dotsEl = $("w-motores-dots");
+    if (dotsEl) {
+      dotsEl.innerHTML = Object.keys(MOTORES).filter(k => k !== "auto").map(k =>
+        '<span class="m-dot' + (disp.includes(k) ? " on" : "") + '" title="' + MOTORES[k] +
+        (lat[k] != null ? " · " + lat[k] + "ms" : "") + '">' + MOTORES[k].split(" ")[0] + "</span>"
+      ).join("");
+    }
+  }).catch(() => {});
+}
+setInterval(refreshLLM, 6000);
+
+function setMotor(seccion, motor) {
+  fetch("/llm/motor", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({seccion, motor})
+  }).then(r => r.json()).then(d => {
+    addSys(d && d.ok ? ("Motor " + seccion + " → " + (MOTORES[d.motor] || d.motor)) : ((d && d.msg) || "No pude cambiar el motor."));
+    refreshLLM();
+  }).catch(() => {});
+}
+
+// ═══════════════ VOZ ═══════════════
+function enrollVoz(perfil) {
+  addSys("Grabando voz " + perfil + "… di algo unos segundos");
+  fetch("/voz/enroll", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({perfil: perfil || "normal"})
+  }).then(r => r.json()).then(d => {
+    addSys((d && d.msg) || "Habla ahora…");
+    setTimeout(refreshVoz, 9000);
+  }).catch(() => { addSys("No pude iniciar enroll."); });
+}
+function refreshVoz() {
+  fetch("/voz").then(r => r.json()).then(d => {
+    if (!d || !d.ok) return;
+    const perfil = (d.perfil_activo || d.activo || "normal").toLowerCase();
+    $("w-voz").textContent = perfil === "cris" ? "CRIS" : "LUIS";
+    const p = d.perfiles || {};
+    $("w-voz-n").textContent = String((p.normal && p.normal.muestras) || 0);
+    $("w-voz-c").textContent = String((p.cris && p.cris.muestras) || 0);
+  }).catch(() => {});
+}
+setInterval(refreshVoz, 12000);
+
+// ═══════════════ LUCES ═══════════════
+function luz(r, g, b) {
+  fetch("/luces", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({r, g, b})})
+    .then(r => r.json()).then(d => { if (d && d.mensaje) addSys(d.mensaje); });
+}
+function apagarLuces() {
+  fetch("/luces", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({off: true})})
+    .then(r => r.json()).then(d => { if (d && d.mensaje) addSys(d.mensaje); });
+}
+
+conectar();
+</script>
+</body>
+</html>

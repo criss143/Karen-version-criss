@@ -1,0 +1,527 @@
+# OÍDO: micrófono + VAD + faster-whisper + huella de voz (Luis normal / Cris)
+import re
+import threading
+import time
+from collections import deque
+
+import numpy as np
+import sounddevice as sd
+
+from config import (
+    MIC_DEVICE,
+    MODELO_STT,
+    UMBRAL_HABLA,
+    PALABRA_ACTIVACION,
+    SOLO_POR_PALABRA,
+)
+from core.vozprint import VozPrint, FS as VP_FS
+
+FS = 16000
+BLOQUE = 0.05
+PRE_ROLL = 0.75
+MAX_FRASE = 16.0
+# Silencio largo = no cortar a mitad de frase (pausas naturales)
+SILENCIO_FIN = 1.15
+SILENCIO_FIN_WAKE = 1.40
+MIN_HABLA_BLOQUES = 2
+MIN_AUDIO_S = 0.50
+VENTANA_ACTIVA_S = 5.0
+COOLDOWN_TRAS_VOZ = 0.55
+BLOQUEAR_DESCONOCIDOS = False  # True = solo Luis/Cris; False evita falsos "Voz no reconocida"
+
+# Variantes cercanas a "Karen" (STT malinterpreta a menudo).
+_WAKE_RE = re.compile(
+    r"\b(karen|caren|karin|karem|karren|karén|"
+    r"kren|kaaren|carem|carin|karon|karén|"
+    r"jarvis|jarbis|yarbis|javis)\b",  # jarvis legacy por si el STT falla
+    re.IGNORECASE,
+)
+
+_ENROLL_RE = re.compile(
+    r"(memoriza|recuerda|guarda|aprende|graba)\s+(mi\s+)?voz"
+    r"|\bvoz\s+(normal|cris|hacker)\b"
+    r"|\benroll\b|\bperfil\s+(normal|cris)\b",
+    re.I,
+)
+
+
+def _resolver_mic(preferido):
+    """Elige mic real. Fifine directo > USB > default. Voicemod al final (casi mudo)."""
+    try:
+        devs = list(sd.query_devices())
+    except Exception:
+        return preferido
+
+    # Si el usuario fijó un índice válido y no es Voicemod mudo, respetarlo
+    if preferido is not None:
+        try:
+            d = devs[int(preferido)]
+            if int(d.get("max_input_channels") or 0) > 0:
+                name = (d.get("name") or "").lower()
+                if "voicemod" not in name:
+                    return int(preferido)
+        except Exception:
+            pass
+
+    candidatos = []
+    for i, d in enumerate(devs):
+        if int(d.get("max_input_channels") or 0) <= 0:
+            continue
+        name = (d.get("name") or "").lower()
+        score = 0
+        # Priorizar mic físico; Voicemod suele llegar casi en silencio
+        if "fifine" in name and "voicemod" not in name:
+            score = 120
+        elif "usb" in name and "audio" in name:
+            score = 70
+        elif "microphone" in name or "mic" in name:
+            score = 50
+        elif "voicewave" in name or "easeus" in name:
+            score = 25
+        elif "voicemod" in name:
+            score = 10  # último recurso
+        if preferido is not None and i == preferido:
+            score += 30
+        if score > 0:
+            candidatos.append((score, -i, i, d.get("name") or f"#{i}"))
+
+    if not candidatos:
+        return preferido
+    candidatos.sort(reverse=True)
+    return candidatos[0][2]
+
+
+class Oido:
+    def __init__(self, bus, dispositivo=MIC_DEVICE, umbral=UMBRAL_HABLA):
+        self.bus = bus
+        self.dispositivo = _resolver_mic(dispositivo)
+        self.umbral = float(umbral)
+        self._umbral_base = float(umbral)
+        self._modelo = None
+        self._bloqueo_modelo = threading.Lock()
+        self._running = False
+        self._disponible = False
+        self._ventana_activa_hasta = 0.0
+        self._modo = "reposo"
+        self._cooldown_hasta = 0.0
+        self._mic_nombre = ""
+        self._ruido_piso = 0.0
+        self.voces = VozPrint()
+        self.ultimo_perfil = self.voces.activo or "normal"
+        self.ultimo_score = 0.0
+        self._ultimo_audio = None
+        self._modo_enroll = None  # "normal" | "cris" | None
+        self._enroll_hasta = 0.0
+        self._last_learn = 0.0
+        self._test_dispositivos()
+        self._publicar_voz()
+
+    def _publicar_voz(self):
+        st = self.voces.estado_hud()
+        st["perfil"] = self.ultimo_perfil
+        self.bus.publicar("voz_perfil", st)
+
+    def _test_dispositivos(self):
+        try:
+            entradas = sd.query_devices(kind="input")
+            if entradas is None:
+                self.bus.publicar("estado", "Sin micrófono detectado.")
+                self.bus.publicar("mic_status", {"modo": "off", "msg": "Sin mic"})
+                return
+            try:
+                info = sd.query_devices(self.dispositivo)
+                self._mic_nombre = info.get("name") or f"#{self.dispositivo}"
+            except Exception:
+                self._mic_nombre = f"#{self.dispositivo}"
+            self._disponible = True
+            self._calibrar_ruido()
+            self.bus.publicar("estado", f"Escuchando · {self._mic_nombre}")
+            self.bus.publicar(
+                "mic_status",
+                {
+                    "modo": "reposo",
+                    "msg": "Escuchando",
+                    "mic": self._mic_nombre,
+                    "umbral": round(self.umbral, 4),
+                },
+            )
+        except Exception as e:
+            self.bus.publicar("estado", f"Micrófono no disponible: {e}")
+            self.bus.publicar("mic_status", {"modo": "off", "msg": "Error mic"})
+
+    def _calibrar_ruido(self):
+        try:
+            rec = sd.rec(
+                int(FS * 0.7),
+                samplerate=FS,
+                channels=1,
+                dtype="float32",
+                device=self.dispositivo,
+            )
+            sd.wait()
+            rms = float(np.sqrt(np.mean(np.square(rec))))
+            self._ruido_piso = rms
+            # Fifine en reposo ~0.0001 y habla ~0.003 → no forzar piso 0.008
+            # Umbral suave: captura directa, sin filtrar de más
+            auto = max(self._umbral_base * 0.85, rms * 1.8 + 0.0005)
+            self.umbral = float(min(max(auto, 0.0012), 0.012))
+            self.bus.publicar(
+                "estado",
+                f"Mic listo · ruido {rms:.4f} · umbral {self.umbral:.4f}",
+            )
+        except Exception as e:
+            name = (self._mic_nombre or "").lower()
+            if "voicemod" in name:
+                self.umbral = max(self._umbral_base, 0.012)
+            self.bus.publicar("estado", f"Calibración mic omitida: {e}")
+
+    def disponible(self):
+        return self._disponible
+
+    def pedir_enroll(self, perfil: str, segundos=8.0):
+        perfil = "cris" if perfil in ("cris", "hacker") else "normal"
+        self._modo_enroll = perfil
+        self._enroll_hasta = time.time() + segundos
+        self.abrir_ventana(segundos + 2)
+        self._set_status("activo", f"Graba voz {perfil}")
+        return perfil
+
+    def _cargar_modelo(self):
+        with self._bloqueo_modelo:
+            if self._modelo is None:
+                self.bus.publicar("estado", "Procesando…")
+                self.bus.publicar(
+                    "mic_status", {"modo": "procesando", "msg": "Cargando oído…"}
+                )
+                from faster_whisper import WhisperModel
+
+                self._modelo = WhisperModel(
+                    MODELO_STT, device="cpu", compute_type="int8"
+                )
+                self.bus.publicar("estado", "Escuchando")
+                self.bus.publicar(
+                    "mic_status", {"modo": "reposo", "msg": "Escuchando"}
+                )
+        return self._modelo
+
+    def _transcribir(self, audio, rapido=False):
+        try:
+            modelo = self._cargar_modelo()
+            # vad_filter=False: audio crudo del mic (Fifine), sin recortar voz baja
+            segmentos, _ = modelo.transcribe(
+                audio,
+                language="es",
+                beam_size=1,
+                best_of=1,
+                temperature=0.0,
+                condition_on_previous_text=False,
+                without_timestamps=True,
+                vad_filter=False,
+                initial_prompt=(
+                    "Karen, abre chrome, cierra whatsapp, busca en youtube, "
+                    "qué hora es, cómo estás, memoriza mi voz."
+                ),
+            )
+            return " ".join(s.text for s in segmentos).strip()
+        except Exception as e:
+            self.bus.publicar("estado", f"Error STT: {e}")
+            return ""
+
+    def _rms(self, bloque):
+        return float(
+            np.sqrt(np.mean(np.square(bloque.astype(np.float32)))) / 32768.0
+        )
+
+    @staticmethod
+    def _tiene_wake(texto: str) -> bool:
+        if not texto:
+            return False
+        low = texto.lower()
+        if PALABRA_ACTIVACION.lower() in low:
+            return True
+        # Prefijos Karen + residual Jarvis (STT)
+        if re.search(r"\b(kar|car)[aei]n\w{0,3}\b", low):
+            return True
+        if re.search(r"\b(jarv|jarb|yarv)[a-z]{0,6}\b", low):
+            return True
+        if any(
+            p in low
+            for p in (
+                "oye karen",
+                "hey karen",
+                "ok karen",
+                "hola karen",
+                "oye jarvis",
+                "hey jarvis",
+            )
+        ):
+            return True
+        return bool(_WAKE_RE.search(texto))
+
+    @staticmethod
+    def _quitar_wake(texto: str) -> str:
+        t = texto.strip()
+        t = _WAKE_RE.sub("", t, count=1)
+        t = re.sub(
+            r"\b(kar|car)[aei]n\w{0,3}\b",
+            "",
+            t,
+            count=1,
+            flags=re.I,
+        )
+        t = re.sub(
+            r"\b(jarv|jarb|yarv)[a-z]{0,6}\b",
+            "",
+            t,
+            count=1,
+            flags=re.I,
+        )
+        t = re.sub(
+            rf"\b{re.escape(PALABRA_ACTIVACION)}\b", "", t, count=1, flags=re.I
+        )
+        return t.strip(" .,;:¡!¿?\t\n\"'")
+
+    @staticmethod
+    def detectar_enroll(texto: str):
+        """Devuelve 'normal' | 'cris' | None según la frase."""
+        if not texto:
+            return None
+        low = texto.lower()
+        if not _ENROLL_RE.search(low) and "memoriza" not in low and "mi voz" not in low:
+            return None
+        if any(k in low for k in ("cris", "hacker", "hack", "modulad", "voicemod pitch")):
+            return "cris"
+        if "normal" in low or "real" in low or "natural" in low:
+            return "normal"
+        # "memoriza mi voz" sin adjetivo → normal por defecto
+        if "voz" in low or "memoriza" in low or "graba" in low:
+            return "normal"
+        return None
+
+    def _en_ventana_activa(self) -> bool:
+        return time.time() < self._ventana_activa_hasta
+
+    def abrir_ventana(self, segundos=None):
+        segundos = segundos if segundos is not None else VENTANA_ACTIVA_S
+        self._ventana_activa_hasta = time.time() + segundos
+        self._modo = "activo"
+        self.bus.publicar("estado", "Te escucho")
+        self.bus.publicar("mic_status", {"modo": "activo", "msg": "Te escucho"})
+
+    def cerrar_ventana(self):
+        self._ventana_activa_hasta = 0.0
+        self._modo = "reposo"
+        self.bus.publicar("mic_status", {"modo": "reposo", "msg": "Escuchando"})
+
+    def marcar_cooldown(self, segundos=None):
+        segundos = COOLDOWN_TRAS_VOZ if segundos is None else segundos
+        self._cooldown_hasta = time.time() + segundos
+
+    def _set_status(self, modo, msg):
+        self.bus.publicar("estado", msg)
+        self.bus.publicar("mic_status", {"modo": modo, "msg": msg})
+
+    def _aplicar_match(self, audio):
+        m = self.voces.match(audio, sr=FS)
+        self.ultimo_score = m.get("score") or 0.0
+        if m.get("es_luis") and m.get("perfil"):
+            self.ultimo_perfil = m["perfil"]
+            # refuerzo ocasional
+            if time.time() - self._last_learn > 12.0:
+                try:
+                    self.voces.aprender_si_luis(audio, perfil=self.ultimo_perfil, sr=FS)
+                    self._last_learn = time.time()
+                except Exception:
+                    pass
+        self._publicar_voz()
+        return m
+
+    # ------------------------------------------------------------------
+    def _grabar_frase(self, timeout, silencio_fin):
+        if self._running:
+            return None
+        if time.time() < self._cooldown_hasta:
+            restante = self._cooldown_hasta - time.time()
+            threading.Event().wait(min(restante, 0.35))
+            if time.time() < self._cooldown_hasta:
+                return None
+
+        self._running = True
+        resultado = {}
+        anillo = deque(maxlen=max(1, int(PRE_ROLL / BLOQUE)))
+        hablando = False
+        tramo = []
+        silencios = 0
+        habla = 0
+        limite_bloques = int(timeout / BLOQUE)
+        n = 0
+        max_bloques_frase = int(MAX_FRASE / BLOQUE)
+        silencio_bloques = max(4, int(silencio_fin / BLOQUE))
+        # No cortar hasta ~0.95s de audio real (evita cortes mid-frase)
+        min_bloques_antes_corte = int(0.95 / BLOQUE)
+        hangover = 0
+        nivel_tick = [0]
+
+        def callback(indata, frames, time_info, status):
+            nonlocal hablando, tramo, silencios, habla, hangover
+            nivel = self._rms(indata[:, 0])
+            nivel_tick[0] += 1
+            if nivel_tick[0] % 3 == 0:
+                self.bus.publicar(
+                    "nivel", {"v": round(min(nivel / 0.08, 1.0), 3)}
+                )
+            anillo.append(indata[:, 0].copy())
+            if not hablando:
+                if nivel > self.umbral:
+                    habla += 1
+                    if habla >= MIN_HABLA_BLOQUES:
+                        hablando = True
+                        tramo = list(anillo)
+                        silencios = 0
+                        hangover = 10  # ~0.5s de gracia al empezar
+                        self._set_status("activo", "Te oigo")
+                else:
+                    habla = max(0, habla - 1)
+            else:
+                tramo.append(indata[:, 0].copy())
+                # Umbral más bajo = pausas entre palabras no cuentan como fin
+                if nivel > self.umbral * 0.38:
+                    silencios = 0
+                    hangover = 10
+                else:
+                    if hangover > 0:
+                        hangover -= 1
+                    else:
+                        silencios += 1
+                    if (
+                        silencios >= silencio_bloques
+                        and len(tramo) >= min_bloques_antes_corte
+                    ):
+                        resultado["fin"] = True
+                if len(tramo) >= max_bloques_frase:
+                    resultado["fin"] = True
+
+        try:
+            with sd.InputStream(
+                samplerate=FS,
+                channels=1,
+                dtype="int16",
+                blocksize=int(FS * BLOQUE),
+                device=self.dispositivo,
+                callback=callback,
+            ):
+                while not resultado.get("fin", False) and n < limite_bloques:
+                    n += 1
+                    threading.Event().wait(BLOQUE * 0.9)
+        except Exception as e:
+            self.bus.publicar("estado", f"Error de micrófono: {e}")
+            if self.dispositivo is not None:
+                try:
+                    self.dispositivo = None
+                    self._mic_nombre = "default"
+                except Exception:
+                    pass
+            self._running = False
+            return None
+
+        self._running = False
+        self.bus.publicar("nivel", {"v": 0.0})
+
+        if not hablando or not tramo:
+            return None
+
+        audio = np.concatenate(tramo).astype(np.float32) / 32768.0
+        if len(audio) < FS * MIN_AUDIO_S:
+            return None
+        return audio
+
+    # ------------------------------------------------------------------
+    def escuchar(self, timeout=30.0):
+        """Devuelve texto comando, o dict especial para enroll, o ''."""
+        if not self._disponible:
+            return ""
+
+        activo = (not SOLO_POR_PALABRA) or self._en_ventana_activa()
+        silencio = SILENCIO_FIN if activo else SILENCIO_FIN_WAKE
+        to = timeout if activo else min(timeout, 14.0)
+
+        if not activo and self._modo != "reposo":
+            self._modo = "reposo"
+            self._set_status("reposo", "Escuchando")
+
+        audio = self._grabar_frase(timeout=to, silencio_fin=silencio)
+        if audio is None:
+            return ""
+
+        self._ultimo_audio = audio
+
+        # Enroll explícito (después de "memoriza mi voz…")
+        if self._modo_enroll and time.time() < self._enroll_hasta:
+            perfil = self._modo_enroll
+            self._modo_enroll = None
+            self._set_status("procesando", f"Guardando voz {perfil}…")
+            res = self.voces.enroll(perfil, audio, sr=FS)
+            self.ultimo_perfil = perfil
+            self._publicar_voz()
+            self._set_status("reposo", "Escuchando")
+            return {"_enroll": True, **res}
+
+        self._set_status("procesando", "Procesando…")
+        texto = self._transcribir(audio, rapido=not activo)
+        if not texto:
+            if activo and self._en_ventana_activa():
+                self._set_status("activo", "Te escucho")
+            else:
+                self.cerrar_ventana()
+                self._set_status("reposo", "Escuchando")
+            return ""
+
+        self.bus.publicar("oido", texto)
+
+        # ¿Pide memorizar voz?
+        enroll_p = self.detectar_enroll(texto)
+        if enroll_p:
+            # Si dice la frase y hay audio suficiente, graba YA
+            res = self.voces.enroll(enroll_p, audio, sr=FS)
+            self.ultimo_perfil = enroll_p
+            self._publicar_voz()
+            self.abrir_ventana(VENTANA_ACTIVA_S)
+            return {"_enroll": True, **res}
+
+        match = self._aplicar_match(audio)
+
+        if not SOLO_POR_PALABRA:
+            self.cerrar_ventana()
+            return texto
+
+        if self._en_ventana_activa():
+            # Ya activo: no exigir wake; opcionalmente validar voz suave
+            resto = self._quitar_wake(texto) if self._tiene_wake(texto) else texto
+            if self._tiene_wake(texto) and not resto:
+                self.abrir_ventana(VENTANA_ACTIVA_S)
+                return ""
+            self.abrir_ventana(VENTANA_ACTIVA_S)
+            return resto if resto else texto
+
+        # REPOSO: exige wake word
+        if not self._tiene_wake(texto):
+            self._set_status("reposo", "Escuchando")
+            return ""
+
+        # Wake detectado → verificar huella si hay perfiles
+        if BLOQUEAR_DESCONOCIDOS and self.voces.listo():
+            if not match.get("es_luis"):
+                self._set_status("reposo", "Escuchando")
+                self.bus.publicar("estado", "Voz no reconocida")
+                self.bus.publicar(
+                    "mic_status", {"modo": "reposo", "msg": "Voz desconocida"}
+                )
+                return ""
+
+        resto = self._quitar_wake(texto)
+        if not resto:
+            self.abrir_ventana(VENTANA_ACTIVA_S)
+            return ""
+
+        self.abrir_ventana(VENTANA_ACTIVA_S)
+        return resto

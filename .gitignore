@@ -1,0 +1,30 @@
+# Secrets and local env
+secrets.json
+secrets.json.example
+.vscode/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build outputs / generated binaries
+build/
+dist/
+*.exe
+*.spec
+*.log
+*.bak
+
+# Logs and local runtime state
+logs/
+*.txt
+jarvis_log.txt
+karen_log.txt
+karen_err.txt
+watcher_test.txt
+voces_perfil.json
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
