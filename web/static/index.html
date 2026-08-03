@@ -3,41 +3,55 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KAREN — Asistente de voz</title>
+<title>KAREN — Núcleo</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@600;700;800&family=Orbitron:wght@600;700;900&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg0: #07040f;
-    --bg1: #12081f;
-    --glass: rgba(28, 14, 48, 0.42);
-    --glass2: rgba(40, 18, 70, 0.55);
-    --stroke: rgba(192, 132, 252, 0.28);
-    --stroke2: rgba(168, 85, 247, 0.45);
+    --bg0: #04060f;
+    --bg1: #0a0a1e;
+    --glass: rgba(18, 16, 44, 0.42);
+    --glass2: rgba(30, 20, 66, 0.55);
+    --stroke: rgba(140, 180, 255, 0.20);
+    --stroke2: rgba(168, 85, 247, 0.40);
     --purple: #c084fc;
     --purple2: #a855f7;
     --purple3: #7c3aed;
     --pink: #e879f9;
-    --text: #f3e8ff;
-    --dim: #a78bca;
+    --cyan: #22d3ee;
+    --cyan2: #38f2ff;
+    --text: #eef2ff;
+    --dim: #8fa3d8;
     --ok: #34d399;
     --warn: #fbbf24;
     --bad: #f87171;
-    --cyan: #22d3ee;
-    --shadow: 0 20px 60px rgba(0,0,0,.55);
-    --radius: 22px;
+    --shadow: 0 24px 70px rgba(0,0,0,.6);
+    --radius: 20px;
+    --glow-cyan: 0 0 18px rgba(56, 242, 255, .5);
+    --glow-purple: 0 0 18px rgba(168, 85, 247, .5);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; }
   body {
     color: var(--text);
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: "Sora", system-ui, -apple-system, sans-serif;
     background:
-      radial-gradient(900px 500px at 50% -5%, rgba(168,85,247,.22), transparent 55%),
-      radial-gradient(700px 420px at 15% 90%, rgba(124,58,237,.12), transparent 50%),
-      radial-gradient(600px 380px at 90% 80%, rgba(232,121,249,.08), transparent 45%),
-      linear-gradient(165deg, var(--bg0), var(--bg1) 55%, #0a0614);
+      radial-gradient(1000px 560px at 50% -8%, rgba(124,58,237,.20), transparent 55%),
+      radial-gradient(760px 460px at 12% 92%, rgba(34,211,238,.10), transparent 52%),
+      radial-gradient(640px 420px at 92% 84%, rgba(232,121,249,.09), transparent 48%),
+      linear-gradient(165deg, var(--bg0), var(--bg1) 55%, #06040f);
     user-select: none;
   }
+  /* Rejilla ambiental de fondo */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(120,160,255,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,160,255,.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, #000 40%, transparent 100%);
+  }
   .shell {
+    position: relative; z-index: 1;
     height: 100%;
     display: grid;
     grid-template-rows: auto 1fr auto;
@@ -45,397 +59,359 @@
     padding: 14px 16px 12px;
   }
 
-  /* top bar */
+  /* ── top bar ── */
   .top {
     display: flex; align-items: center; gap: 14px;
-    padding: 10px 16px;
-    border-radius: 18px;
-    background: var(--glass);
+    padding: 10px 18px;
+    border-radius: 16px;
+    background: linear-gradient(120deg, var(--glass2), var(--glass));
     border: 1px solid var(--stroke);
-    backdrop-filter: blur(16px);
     box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
   }
   .logo {
-    font-weight: 800; letter-spacing: 7px; font-size: 15px;
-    color: #f5e9ff;
-    text-shadow: 0 0 18px rgba(192,132,252,.55);
+    font-family: "Orbitron", sans-serif; font-weight: 900;
+    font-size: 20px; letter-spacing: .42em; padding-left: .42em;
+    background: linear-gradient(90deg, var(--cyan2), var(--purple), var(--pink));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 14px rgba(168,85,247,.4));
   }
-  .logo span { color: var(--purple); }
-  .pill {
+  .status-pill {
     display: flex; align-items: center; gap: 8px;
-    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
-    color: var(--dim);
     padding: 5px 12px; border-radius: 999px;
+    background: rgba(10,12,30,.55);
     border: 1px solid var(--stroke);
-    background: rgba(10,6,20,.45);
+    font-size: 11px; letter-spacing: 1px; color: var(--dim);
   }
-  .dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: #64748b; flex-shrink: 0;
-  }
-  .dot.reposo { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); animation: blink 2.4s ease-in-out infinite; }
-  .dot.activo { background: var(--purple); box-shadow: 0 0 12px var(--purple); animation: blink .9s ease-in-out infinite; }
-  .dot.hablando { background: var(--pink); box-shadow: 0 0 12px var(--pink); animation: blink .55s ease-in-out infinite; }
-  .dot.procesando { background: var(--warn); box-shadow: 0 0 12px var(--warn); animation: blink .45s ease-in-out infinite; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .dot.reposo { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); animation: pulse 2.4s ease-in-out infinite; }
+  .dot.activo { background: var(--purple); box-shadow: 0 0 12px var(--purple); animation: pulse .9s ease-in-out infinite; }
+  .dot.hablando { background: var(--pink); box-shadow: 0 0 12px var(--pink); animation: pulse .55s ease-in-out infinite; }
+  .dot.procesando { background: var(--warn); box-shadow: 0 0 12px var(--warn); animation: pulse .45s ease-in-out infinite; }
   .dot.off { background: var(--bad); box-shadow: 0 0 10px var(--bad); }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
-  .top-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  @keyframes pulse { 0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.4; transform:scale(.82)} }
+  .top-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
   .clock {
-    font-family: Consolas, ui-monospace, monospace;
-    font-size: 12px; letter-spacing: 1px; color: var(--dim);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px; letter-spacing: 1px; color: var(--dim);
+    font-variant-numeric: tabular-nums;
   }
   .icon-btn {
-    background: rgba(20,10,36,.7);
-    border: 1px solid var(--stroke);
-    color: var(--dim);
-    border-radius: 10px;
-    padding: 7px 10px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: .15s;
-    line-height: 1;
+    width: 34px; height: 34px; border-radius: 10px;
+    border: 1px solid var(--stroke); background: rgba(10,12,30,.5);
+    color: var(--dim); cursor: pointer; font-size: 15px;
+    display: grid; place-items: center; transition: .15s;
   }
-  .icon-btn:hover {
-    color: var(--text); border-color: var(--purple2);
-    box-shadow: 0 0 14px rgba(168,85,247,.3);
-  }
+  .icon-btn:hover { color: var(--cyan2); border-color: var(--cyan); box-shadow: var(--glow-cyan); }
 
-  /* bento main */
+  /* ── stage: 3 columnas ── */
   .stage {
-    min-height: 0;
     display: grid;
-    grid-template-columns: 240px 1fr 240px;
-    gap: 12px;
+    grid-template-columns: 250px 1fr 300px;
+    gap: 12px; min-height: 0;
   }
-  .col {
-    min-height: 0;
-    display: flex; flex-direction: column; gap: 12px;
-  }
+  .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .col-r { display: grid; grid-template-rows: 1fr auto; gap: 12px; min-height: 0; }
+
   .card {
     position: relative;
     border-radius: var(--radius);
     background: linear-gradient(160deg, var(--glass2), var(--glass));
     border: 1px solid var(--stroke);
-    backdrop-filter: blur(18px);
-    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.05);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
     overflow: hidden;
     padding: 14px 16px;
   }
   .card::before {
-    content: "";
-    position: absolute; inset: 0;
+    content: ""; position: absolute; inset: 0; pointer-events: none;
     background:
-      linear-gradient(135deg, rgba(192,132,252,.08), transparent 40%),
-      radial-gradient(300px 120px at 100% 0%, rgba(232,121,249,.08), transparent 60%);
-    pointer-events: none;
+      linear-gradient(135deg, rgba(56,242,255,.06), transparent 42%),
+      radial-gradient(280px 120px at 100% 0%, rgba(232,121,249,.07), transparent 62%);
   }
+  /* borde superior animado (barrido de luz) */
+  .card::after {
+    content: ""; position: absolute; top: 0; left: -40%; right: 60%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan2), transparent);
+    animation: sweep 5s linear infinite; opacity: .6;
+  }
+  @keyframes sweep { 0%{transform:translateX(0)} 100%{transform:translateX(240%)} }
   .card > * { position: relative; z-index: 1; }
   .card h4 {
-    font-size: 10px; letter-spacing: 2.2px; text-transform: uppercase;
-    color: var(--purple); margin-bottom: 10px; font-weight: 700;
+    font-size: 10px; letter-spacing: 2.4px; text-transform: uppercase;
+    color: var(--cyan2); margin-bottom: 10px; font-weight: 700;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .card h4::before {
+    content: ""; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--cyan2); box-shadow: 0 0 8px var(--cyan2);
   }
   .grow { flex: 1; min-height: 0; }
 
   /* weather */
-  .wx-main {
-    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
-  }
+  .wx-main { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
   .wx-temp {
-    font-size: 34px; font-weight: 700; letter-spacing: -1px;
-    background: linear-gradient(180deg, #fff, var(--purple));
+    font-family: "Orbitron", sans-serif;
+    font-size: 36px; font-weight: 700; letter-spacing: -1px; line-height: 1;
+    background: linear-gradient(180deg, #fff, var(--cyan)); 
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .wx-meta { font-size: 12px; color: var(--dim); line-height: 1.45; }
   .wx-meta b { color: var(--text); font-weight: 600; }
   .wx-row {
     display: flex; justify-content: space-between;
-    font-size: 11px; color: var(--dim); padding: 3px 0;
+    font-size: 11px; color: var(--dim); padding: 4px 0;
+    border-bottom: 1px solid rgba(120,160,255,.06);
   }
+  .wx-row:last-child { border-bottom: none; }
   .wx-row b { color: var(--text); }
+
+  /* ── widget: PULSO (nuevo, original) ── */
+  .pulse-card { }
+  #pulse-canvas { width: 100%; height: 54px; display: block; }
+  .pulse-legend {
+    display: flex; justify-content: space-between; margin-top: 6px;
+    font-size: 10px; color: var(--dim); letter-spacing: .5px;
+  }
+  .pulse-legend b { color: var(--cyan2); font-variant-numeric: tabular-nums; }
+
+  /* ── widget: ÁNIMO de KAREN (nuevo) ── */
+  .mood-card .mood-face {
+    font-size: 12px; color: var(--text); font-weight: 600;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .mood-orb {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, var(--purple));
+    box-shadow: 0 0 12px var(--purple2);
+    animation: breathe 3s ease-in-out infinite;
+  }
+  @keyframes breathe { 0%,100%{transform:scale(1); opacity:.9} 50%{transform:scale(1.25); opacity:1} }
+  .mood-line { font-size: 11px; color: var(--dim); line-height: 1.5; font-style: italic; }
 
   /* system gauges */
   .gauge {
     display: grid; grid-template-columns: 42px 1fr auto;
-    align-items: center; gap: 10px;
-    padding: 6px 0;
+    align-items: center; gap: 10px; padding: 6px 0;
   }
   .gauge .lab { font-size: 11px; color: var(--dim); letter-spacing: 1px; }
   .gauge .val { font-size: 12px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; }
   .bar {
     height: 7px; border-radius: 999px;
-    background: rgba(255,255,255,.06);
-    overflow: hidden; border: 1px solid rgba(192,132,252,.15);
+    background: rgba(120,160,255,.07);
+    overflow: hidden; border: 1px solid rgba(56,242,255,.12);
+    position: relative;
   }
   .bar > i {
-    display: block; height: 100%; width: 0%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, var(--purple3), var(--purple), var(--pink));
-    box-shadow: 0 0 10px rgba(168,85,247,.55);
-    transition: width .5s ease;
+    display: block; height: 100%; width: 0%; border-radius: inherit;
+    background: linear-gradient(90deg, var(--cyan), var(--purple), var(--pink));
+    box-shadow: 0 0 10px rgba(56,242,255,.5);
+    transition: width .6s cubic-bezier(0.23, 1, 0.32, 1);
+    position: relative;
   }
+  .bar > i::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+    transform: translateX(-100%); animation: shimmer 2.6s ease-in-out infinite;
+  }
+  @keyframes shimmer { 0%{transform:translateX(-100%)} 60%,100%{transform:translateX(320%)} }
 
-  /* center face */
+  /* ── center: cara neuronal ── */
   .face-wrap {
     height: 100%;
     display: flex; flex-direction: column;
     border-radius: calc(var(--radius) + 4px);
     background:
-      radial-gradient(ellipse 60% 50% at 50% 45%, rgba(124,58,237,.18), transparent 70%),
-      linear-gradient(165deg, rgba(30,12,52,.55), rgba(12,6,22,.65));
+      radial-gradient(ellipse 62% 52% at 50% 44%, rgba(124,58,237,.16), transparent 70%),
+      radial-gradient(ellipse 40% 40% at 50% 46%, rgba(34,211,238,.10), transparent 72%),
+      linear-gradient(165deg, rgba(22,16,48,.55), rgba(8,8,22,.68));
     border: 1px solid var(--stroke2);
-    box-shadow: var(--shadow), 0 0 80px rgba(124,58,237,.12);
-    overflow: hidden;
-    position: relative;
+    box-shadow: var(--shadow), 0 0 90px rgba(124,58,237,.12), inset 0 0 60px rgba(34,211,238,.04);
+    overflow: hidden; position: relative;
   }
   .face-wrap::after {
-    content: "";
-    position: absolute; inset: 0;
-    background:
-      repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(192,132,252,.015) 3px, rgba(192,132,252,.015) 4px);
-    pointer-events: none;
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(120,160,255,.012) 3px, rgba(120,160,255,.012) 4px);
     opacity: .7;
   }
-  #face-canvas {
-    flex: 1; width: 100%; min-height: 0; display: block;
-  }
+  /* esquinas HUD */
+  .corner { position: absolute; width: 22px; height: 22px; border: 1.5px solid var(--cyan); opacity: .5; z-index: 2; }
+  .corner.tl { top: 12px; left: 12px; border-right: none; border-bottom: none; }
+  .corner.tr { top: 12px; right: 12px; border-left: none; border-bottom: none; }
+  .corner.bl { bottom: 12px; left: 12px; border-right: none; border-top: none; }
+  .corner.br { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+  #face-canvas { flex: 1; width: 100%; min-height: 0; display: block; }
   .face-caption {
-    text-align: center;
-    padding: 8px 12px 14px;
-    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
-    color: var(--dim);
+    text-align: center; padding: 8px 12px 14px;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim);
+    font-family: "JetBrains Mono", monospace;
   }
-  .face-caption b { color: var(--purple); }
+  .face-caption b { color: var(--cyan2); }
 
-  /* spotify-like */
-  .sp-art {
-    width: 100%; aspect-ratio: 1;
-    border-radius: 14px;
+  /* ── right column: arriba widget nuevo, abajo música ── */
+  /* widget nuevo: ONDAS DE VOZ / actividad */
+  .signal-card { display: flex; flex-direction: column; }
+  #signal-canvas { width: 100%; flex: 1; min-height: 90px; display: block; border-radius: 12px; }
+  .signal-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag {
+    font-size: 9px; letter-spacing: .5px; padding: 3px 8px; border-radius: 999px;
+    background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.25);
+    color: var(--cyan2); font-family: "JetBrains Mono", monospace;
+  }
+  .tag.on { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.4); color: var(--ok); }
+
+  /* música (abajo derecha) */
+  .music-card { }
+  .music-row { display: flex; align-items: center; gap: 12px; }
+  .viz-mini {
+    width: 74px; height: 74px; flex: none; border-radius: 14px; position: relative; overflow: hidden;
     background:
-      radial-gradient(circle at 30% 30%, rgba(232,121,249,.35), transparent 50%),
-      radial-gradient(circle at 70% 70%, rgba(124,58,237,.4), transparent 55%),
-      linear-gradient(145deg, #2a1048, #120820);
-    border: 1px solid var(--stroke);
-    margin-bottom: 12px;
-    display: grid; place-items: center;
-    box-shadow: inset 0 0 40px rgba(168,85,247,.2);
+      radial-gradient(circle at 30% 25%, rgba(232,121,249,.28), transparent 55%),
+      radial-gradient(circle at 72% 78%, rgba(34,211,238,.28), transparent 58%),
+      linear-gradient(155deg, #1a1038, #0a0620);
+    border: 1px solid var(--stroke2);
+    box-shadow: inset 0 0 30px rgba(168,85,247,.22);
   }
-  .sp-art .note {
-    font-size: 42px; filter: drop-shadow(0 0 12px rgba(192,132,252,.7));
-    opacity: .85;
+  #viz-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .viz-idle {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    transition: opacity .5s ease;
   }
-  .sp-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
-  .sp-sub { font-size: 11px; color: var(--dim); margin-bottom: 12px; }
-  .sp-controls {
-    display: flex; justify-content: center; gap: 10px; align-items: center;
-  }
+  .viz-idle.hidden { opacity: 0; }
+  .viz-note { font-size: 26px; filter: drop-shadow(0 0 10px rgba(192,132,252,.7)); opacity: .8; animation: floaty 3.5s ease-in-out infinite; }
+  @keyframes floaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+  .music-info { flex: 1; min-width: 0; }
+  .sp-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sp-sub { font-size: 10px; color: var(--dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sp-controls { display: flex; gap: 8px; margin-top: 8px; }
   .sp-btn {
-    width: 36px; height: 36px; border-radius: 50%;
-    border: 1px solid var(--stroke);
-    background: rgba(20,10,40,.6);
-    color: var(--text); cursor: pointer;
-    display: grid; place-items: center;
-    font-size: 13px; transition: .15s;
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 1px solid var(--stroke); background: rgba(14,12,32,.6);
+    color: var(--text); cursor: pointer; display: grid; place-items: center;
+    font-size: 12px; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
   }
-  .sp-btn:hover {
-    border-color: var(--purple); box-shadow: 0 0 14px rgba(168,85,247,.35);
-    transform: translateY(-1px);
-  }
+  .sp-btn:hover { border-color: var(--cyan); box-shadow: var(--glow-cyan); transform: translateY(-1px); }
+  .sp-btn:active { transform: scale(.92); }
   .sp-btn.main {
-    width: 46px; height: 46px;
-    background: linear-gradient(135deg, var(--purple2), var(--purple3));
-    border: none; font-size: 16px;
-    box-shadow: 0 0 20px rgba(168,85,247,.45);
+    background: linear-gradient(135deg, var(--cyan), var(--purple2));
+    border: none; box-shadow: 0 0 16px rgba(56,242,255,.4);
   }
 
-  /* bottom chat dock */
+  /* ── dock (chat) ── */
   .dock {
-    border-radius: 18px;
-    background: var(--glass);
-    border: 1px solid var(--stroke);
-    backdrop-filter: blur(16px);
-    box-shadow: var(--shadow);
-    display: grid;
-    grid-template-rows: minmax(110px, 180px) auto;
-    min-height: 0;
-    overflow: hidden;
+    display: grid; grid-template-rows: 1fr auto;
+    gap: 10px; min-height: 0; max-height: 210px;
   }
   #chat {
-    overflow-y: auto;
-    padding: 12px 16px 6px;
-    display: flex; flex-direction: column; gap: 8px;
-    min-height: 0;
+    overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+    padding: 4px 4px 0; scrollbar-width: thin; scrollbar-color: var(--stroke2) transparent;
   }
   #chat::-webkit-scrollbar { width: 6px; }
-  #chat::-webkit-scrollbar-thumb { background: rgba(168,85,247,.35); border-radius: 999px; }
-  .msg { display: flex; gap: 8px; max-width: 92%; animation: fadeIn .2s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  #chat::-webkit-scrollbar-thumb { background: var(--stroke2); border-radius: 3px; }
+  .msg { display: flex; gap: 8px; align-items: flex-start; max-width: 78%; animation: msgIn .3s cubic-bezier(0.23,1,0.32,1); }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   .msg.user { align-self: flex-end; flex-direction: row-reverse; }
-  .msg.sys { align-self: center; max-width: 100%; }
-  .msg .avatar {
-    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  .avatar {
+    width: 26px; height: 26px; border-radius: 50%; flex: none;
     display: grid; place-items: center; font-size: 11px; font-weight: 700;
-    border: 1px solid var(--stroke);
-    background: rgba(20,10,40,.7);
-    color: var(--purple);
+    background: linear-gradient(135deg, var(--purple2), var(--cyan)); color: #fff;
   }
-  .msg.user .avatar {
-    background: linear-gradient(135deg, #4c1d95, #7c3aed);
-    color: #fff; border: none;
+  .msg.user .avatar { background: linear-gradient(135deg, #5b6ad0, #7c3aed); }
+  .burbuja {
+    padding: 9px 13px; border-radius: 14px; font-size: 13px; line-height: 1.4;
+    background: rgba(20,18,44,.7); border: 1px solid var(--stroke);
   }
-  .msg .burbuja {
-    padding: 8px 12px; border-radius: 14px;
-    font-size: 13px; line-height: 1.4;
-    background: rgba(30,14,52,.75);
-    border: 1px solid var(--stroke);
-    color: var(--text);
-    word-break: break-word;
-  }
-  .msg.user .burbuja {
-    background: linear-gradient(135deg, rgba(109,40,217,.85), rgba(147,51,234,.75));
-    border-color: rgba(192,132,252,.35);
-  }
-  .msg.sys .burbuja {
-    background: transparent; border: none;
-    color: var(--dim); font-size: 11px; letter-spacing: .3px;
-    padding: 2px 6px;
-  }
-  .msg.pensando .burbuja { color: var(--dim); font-style: italic; }
-  .chip {
-    font-size: 11px; padding: 5px 11px; border-radius: 999px;
-    border: 1px solid var(--stroke); color: var(--dim);
-    background: rgba(20,10,36,.55); cursor: pointer; transition: .15s;
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-  .chip:hover {
-    color: var(--text); border-color: var(--purple);
-    box-shadow: 0 0 12px rgba(168,85,247,.25);
-  }
-  .chip.color { width: 24px; height: 24px; padding: 0; border-radius: 50%; }
-  .chatbar { padding: 0 14px 12px; }
-  .chat-box {
-    display: flex; align-items: center; gap: 12px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(192,132,252,.25);
-    border-radius: 14px;
-    padding: 10px 14px;
-    transition: border-color .2s, box-shadow .2s;
-  }
-  .chat-box:focus-within {
-    border-color: var(--purple2);
-    box-shadow: 0 0 20px rgba(168,85,247,.18);
-  }
-  .mic-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: #64748b; flex-shrink: 0;
-  }
-  .mic-dot.reposo { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: blink 2.4s ease-in-out infinite; }
-  .mic-dot.activo { background: var(--bad); box-shadow: 0 0 10px var(--bad); animation: blink .8s ease-in-out infinite; }
-  .mic-dot.hablando { background: var(--pink); box-shadow: 0 0 10px var(--pink); animation: blink .6s ease-in-out infinite; }
-  .chat-box input {
-    flex: 1; background: transparent; border: none; outline: none;
-    color: var(--text); font-size: 14px; font-family: inherit; min-width: 0;
-  }
-  .chat-box input::placeholder { color: #6b528a; }
-  .chat-box button {
-    background: linear-gradient(135deg, var(--purple2), var(--purple3));
-    border: none; color: #fff;
-    font-size: 13px; font-weight: 600;
-    cursor: pointer; letter-spacing: .5px;
-    font-family: inherit; padding: 8px 16px; border-radius: 10px;
-    transition: .15s; flex-shrink: 0;
-  }
-  .chat-box button:hover {
-    box-shadow: 0 0 16px rgba(168,85,247,.5);
-    transform: translateY(-1px);
-  }
-  .aviso-conexion {
-    text-align: center; font-size: 12px; color: var(--bad);
-    padding: 6px; display: none;
-  }
+  .msg.karen .burbuja { border-color: rgba(56,242,255,.22); }
+  .msg.user .burbuja { background: linear-gradient(135deg, rgba(124,58,237,.5), rgba(88,50,180,.4)); border-color: var(--stroke2); }
+  .msg.sys { align-self: center; max-width: 90%; }
+  .msg.sys .burbuja { background: transparent; border: none; color: var(--dim); font-size: 11px; text-align: center; }
+  .msg.pensando .burbuja { color: var(--cyan2); letter-spacing: 3px; }
 
-  /* side panel */
+  .aviso-conexion {
+    display: none; text-align: center; color: var(--warn);
+    font-size: 11px; padding: 4px;
+  }
+  .chatbar { }
+  .chat-box {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px 8px 14px; border-radius: 16px;
+    background: linear-gradient(120deg, var(--glass2), var(--glass));
+    border: 1px solid var(--stroke); backdrop-filter: blur(14px);
+    box-shadow: var(--shadow);
+  }
+  .mic-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .mic-dot.reposo { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: pulse 2.4s ease-in-out infinite; }
+  .mic-dot.activo { background: var(--purple); box-shadow: 0 0 10px var(--purple); animation: pulse .8s ease-in-out infinite; }
+  .mic-dot.hablando { background: var(--pink); box-shadow: 0 0 10px var(--pink); animation: pulse .6s ease-in-out infinite; }
+  .mic-dot.procesando { background: var(--warn); box-shadow: 0 0 10px var(--warn); animation: pulse .45s ease-in-out infinite; }
+  .mic-dot.off { background: var(--bad); }
+  #input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-size: 14px; font-family: inherit;
+  }
+  #input::placeholder { color: var(--dim); }
+  #btn-enviar {
+    padding: 8px 18px; border-radius: 12px; border: none; cursor: pointer;
+    background: linear-gradient(135deg, var(--cyan), var(--purple2)); color: #fff;
+    font-weight: 700; font-size: 13px; transition: transform .15s, box-shadow .15s;
+  }
+  #btn-enviar:hover { box-shadow: 0 0 18px rgba(56,242,255,.5); transform: translateY(-1px); }
+  #btn-enviar:active { transform: scale(.96); }
+
+  /* ── panel lateral (ajustes) ── */
   #overlay {
-    position: fixed; inset: 0; z-index: 20;
-    background: rgba(4,2,10,.55);
-    backdrop-filter: blur(3px);
-    opacity: 0; pointer-events: none;
-    transition: opacity .2s;
+    position: fixed; inset: 0; background: rgba(4,4,14,.6); backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 40;
   }
   #overlay.open { opacity: 1; pointer-events: auto; }
-  aside {
-    position: fixed; top: 0; right: 0; bottom: 0; z-index: 21;
-    width: 310px;
-    background: #0e0618;
-    border-left: 1px solid var(--stroke);
-    box-shadow: -20px 0 60px rgba(0,0,0,.55);
-    transform: translateX(102%);
-    transition: transform .25s ease;
-    padding: 18px;
-    overflow-y: auto;
-    display: flex; flex-direction: column; gap: 14px;
+  #panel {
+    position: fixed; top: 0; right: -420px; width: 380px; max-width: 92vw; height: 100%;
+    background: linear-gradient(160deg, #140f30, #0a0820);
+    border-left: 1px solid var(--stroke2); box-shadow: -20px 0 60px rgba(0,0,0,.6);
+    z-index: 50; transition: right .35s cubic-bezier(0.32,0.72,0,1);
+    padding: 20px; overflow-y: auto;
   }
-  aside.open { transform: none; }
-  aside::-webkit-scrollbar { width: 8px; }
-  aside::-webkit-scrollbar-thumb { background: rgba(168,85,247,.3); border-radius: 999px; }
-  aside > h3 {
-    font-size: 11px; letter-spacing: 2.4px; text-transform: uppercase;
-    color: var(--purple); margin-bottom: 2px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  aside h3 .x {
-    cursor: pointer; color: var(--dim); font-size: 15px; padding: 2px 6px;
-    border-radius: 6px;
-  }
-  aside h3 .x:hover { color: var(--text); background: rgba(255,255,255,.06); }
+  #panel.open { right: 0; }
+  #panel h3 { font-size: 15px; margin-bottom: 14px; display: flex; justify-content: space-between; color: var(--cyan2); }
+  #panel .x { cursor: pointer; color: var(--dim); }
   .widget {
-    background: rgba(28,14,48,.55);
-    border: 1px solid var(--stroke);
-    border-radius: 14px;
-    padding: 14px;
+    background: rgba(18,16,44,.5); border: 1px solid var(--stroke);
+    border-radius: 14px; padding: 14px; margin-bottom: 12px;
   }
-  .widget h3 {
-    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-    color: var(--purple); margin-bottom: 10px;
-  }
-  .row {
-    display: flex; justify-content: space-between; align-items: center;
-    font-size: 12px; color: var(--dim); padding: 4px 0;
-  }
-  .row b { color: var(--text); font-weight: 600; }
-  .m-row {
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 6px; padding: 4px 0; font-size: 12px; color: var(--dim);
-  }
+  .widget h3 { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cyan2); margin-bottom: 10px; }
+  .widget .row { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); padding: 4px 0; }
+  .widget .row b { color: var(--text); }
+  .m-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--dim); padding: 5px 0; }
   .m-row select {
-    background: #12081f; color: var(--text);
-    border: 1px solid var(--stroke); border-radius: 8px;
-    padding: 4px 6px; font-size: 11px; font-family: inherit;
-    max-width: 132px; outline: none; cursor: pointer;
+    background: rgba(14,12,32,.8); color: var(--text); border: 1px solid var(--stroke);
+    border-radius: 8px; padding: 4px 8px; font-size: 11px; font-family: inherit;
   }
-  .m-row select:disabled { opacity: .38; cursor: not-allowed; }
-  .m-dots { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
-  .m-dot {
-    font-size: 9px; letter-spacing: .5px; padding: 3px 7px; border-radius: 999px;
-    border: 1px solid var(--stroke); color: var(--dim);
+  .m-dots { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .m-dot { font-size: 9px; padding: 3px 7px; border-radius: 6px; background: rgba(120,160,255,.06); border: 1px solid var(--stroke); color: var(--dim); }
+  .m-dot.on { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.4); color: var(--ok); }
+  .acciones-fila { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    font-size: 11px; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+    background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.25); color: var(--cyan2);
+    transition: .15s;
   }
-  .m-dot.on { color: var(--ok); border-color: rgba(52,211,153,.45); box-shadow: 0 0 8px rgba(52,211,153,.25); }
-  .hint { font-size: 11px; color: var(--dim); line-height: 1.55; opacity: .9; }
-  .hint b { color: var(--text); }
-  .acciones-fila { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .acciones-fila .chip { font-size: 11px; padding: 4px 10px; }
+  .chip:hover { background: rgba(34,211,238,.18); }
+  .chip.color { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); }
 
   @media (max-width: 980px) {
-    .stage { grid-template-columns: 1fr; }
-    .col-side { display: none; }
-    .dock { grid-template-rows: minmax(120px, 200px) auto auto; }
+    .stage { grid-template-columns: 1fr; grid-auto-rows: min-content; }
+    .col-side, .col-r { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card::after, .bar > i::after, .mood-orb, .dot { animation: none; }
   }
 </style>
 </head>
 <body>
 <div class="shell">
   <header class="top">
-    <div class="logo">K <span>A R E N</span></div>
-    <div class="pill">
+    <span class="logo">KAREN</span>
+    <div class="status-pill">
       <span class="dot reposo" id="dot"></span>
       <span id="sp-txt">Escuchando</span>
     </div>
@@ -446,22 +422,36 @@
   </header>
 
   <div class="stage">
+    <!-- IZQUIERDA -->
     <div class="col col-side">
-      <div class="card grow">
-        <h4>Weather</h4>
+      <div class="card">
+        <h4>Clima</h4>
         <div class="wx-main">
           <div class="wx-temp" id="wx-temp">--°</div>
           <div class="wx-meta">
             <div id="wx-place"><b>Local</b></div>
-            <div id="wx-desc">Cargando clima…</div>
+            <div id="wx-desc">Cargando…</div>
           </div>
         </div>
         <div class="wx-row"><span>Sensación</span><b id="wx-feel">—</b></div>
         <div class="wx-row"><span>Humedad</span><b id="wx-hum">—</b></div>
         <div class="wx-row"><span>Viento</span><b id="wx-wind">—</b></div>
       </div>
+
+      <div class="card pulse-card">
+        <h4>Pulso neural</h4>
+        <canvas id="pulse-canvas"></canvas>
+        <div class="pulse-legend"><span>Actividad</span><b id="pulse-bpm">— Hz</b></div>
+      </div>
+
+      <div class="card mood-card grow">
+        <h4>Ánimo de KAREN</h4>
+        <div class="mood-face"><span class="mood-orb"></span><span id="face-mood2">neutral</span></div>
+        <div class="mood-line" id="mood-line">Tranquila y atenta, aquí contigo.</div>
+      </div>
+
       <div class="card">
-        <h4>System</h4>
+        <h4>Sistema</h4>
         <div class="gauge"><span class="lab">CPU</span><div class="bar"><i id="g-cpu"></i></div><span class="val" id="v-cpu">—</span></div>
         <div class="gauge"><span class="lab">RAM</span><div class="bar"><i id="g-ram"></i></div><span class="val" id="v-ram">—</span></div>
         <div class="gauge"><span class="lab">DISK</span><div class="bar"><i id="g-disk"></i></div><span class="val" id="v-disk">—</span></div>
@@ -469,23 +459,45 @@
       </div>
     </div>
 
+    <!-- CENTRO: cara neuronal -->
     <div class="col">
       <div class="face-wrap grow">
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
         <canvas id="face-canvas"></canvas>
         <div class="face-caption">KAREN · <b id="face-mood">neutral</b></div>
       </div>
     </div>
 
-    <div class="col col-side">
-      <div class="card grow">
-        <h4>Media</h4>
-        <div class="sp-art"><div class="note">♪</div></div>
-        <div class="sp-title" id="sp-title">Listo para media</div>
-        <div class="sp-sub" id="sp-sub">Di «abre youtube» o usa controles</div>
-        <div class="sp-controls">
-          <button class="sp-btn" onclick="cmd('pausa')" title="Pausa">⏮</button>
-          <button class="sp-btn main" onclick="cmd('reproduce')" title="Play/Pause">▶</button>
-          <button class="sp-btn" onclick="cmd('siguiente')" title="Siguiente">⏭</button>
+    <!-- DERECHA: arriba señal, abajo música -->
+    <div class="col-r col-side">
+      <div class="card signal-card">
+        <h4>Señal de voz</h4>
+        <canvas id="signal-canvas"></canvas>
+        <div class="signal-tags">
+          <span class="tag" id="tag-mic">MIC</span>
+          <span class="tag" id="tag-llm">LLM</span>
+          <span class="tag" id="tag-vision">VISIÓN</span>
+          <span class="tag" id="tag-audio">AUDIO PC</span>
+        </div>
+      </div>
+
+      <div class="card music-card" id="media-card">
+        <h4>Audio en vivo</h4>
+        <div class="music-row">
+          <div class="viz-mini">
+            <canvas id="viz-canvas"></canvas>
+            <div class="viz-idle" id="viz-idle"><div class="viz-note">♪</div></div>
+          </div>
+          <div class="music-info">
+            <div class="sp-title" id="sp-title">Escuchando tu PC</div>
+            <div class="sp-sub" id="sp-sub">Reproduce algo</div>
+            <div class="sp-controls">
+              <button class="sp-btn" onclick="cmd('pausa')" title="Anterior">⏮</button>
+              <button class="sp-btn main" onclick="cmd('reproduce')" title="Play/Pausa">▶</button>
+              <button class="sp-btn" onclick="cmd('siguiente')" title="Siguiente">⏭</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -494,7 +506,7 @@
   <div class="dock">
     <div id="chat"></div>
     <div class="aviso-conexion" id="aviso-conexion">Sin conexión con el núcleo de Karen…</div>
-<div class="chatbar">
+    <div class="chatbar">
       <div class="chat-box">
         <span class="mic-dot reposo" id="mic-dot"></span>
         <input id="input" placeholder="Hablar con Karen…" autocomplete="off">
@@ -507,7 +519,6 @@
 <div id="overlay"></div>
 <aside id="panel">
   <h3>KAREN <span class="x" onclick="cerrarPanel()">✕</span></h3>
-
   <div class="widget">
     <h3>Sistema</h3>
     <div class="row"><span>CPU / RAM</span><b id="w-sys">—</b></div>
@@ -516,7 +527,6 @@
     <div class="row"><span>Mic</span><b id="w-mic">—</b></div>
     <div class="row"><span>LLM</span><b id="w-model">—</b></div>
   </div>
-
   <div class="widget" id="w-motores">
     <h3>Motores IA</h3>
     <div class="m-row" data-seccion="general"><span>General</span><select onchange="setMotor('general',this.value)"></select></div>
@@ -525,7 +535,6 @@
     <div class="m-row" data-seccion="mundo"><span>Mundo</span><select onchange="setMotor('mundo',this.value)"></select></div>
     <div class="m-dots" id="w-motores-dots"></div>
   </div>
-
   <div class="widget">
     <h3>Voces</h3>
     <div class="row"><span>Activa</span><b id="w-voz">—</b></div>
@@ -536,11 +545,18 @@
       <span class="chip" onclick="enrollVoz('cris')">+ voz cris</span>
     </div>
   </div>
-
+  <div class="widget">
+    <h3>Visión</h3>
+    <div class="row"><span>KAREN puede ver tu pantalla</span></div>
+    <div class="acciones-fila">
+      <span class="chip" onclick="cmd('¿qué ves en mi pantalla?')">👁 Ver pantalla</span>
+    </div>
+  </div>
   <div class="widget">
     <h3>Luces</h3>
     <div class="acciones-fila">
       <span class="chip color" style="background:#a855f7" onclick="luz(168,85,247)" title="morado"></span>
+      <span class="chip color" style="background:#22d3ee" onclick="luz(34,211,238)" title="cian"></span>
       <span class="chip color" style="background:#0040ff" onclick="luz(0,64,255)" title="azul"></span>
       <span class="chip color" style="background:#ff1414" onclick="luz(255,20,20)" title="rojo"></span>
       <span class="chip color" style="background:#00ff50" onclick="luz(0,255,80)" title="verde"></span>
@@ -549,7 +565,6 @@
       <span class="chip" onclick="apagarLuces()">off</span>
     </div>
   </div>
-
 </aside>
 
 <script>
@@ -680,11 +695,31 @@ function setDot(modo) {
   }
 }
 
+const MOOD_FRASES = {
+  neutral: "Tranquila y atenta, aquí contigo.",
+  feliz: "De buenas, me contagias la vibra.",
+  alegre: "De buenas, me contagias la vibra.",
+  triste: "Un poco baja, pero aquí sigo contigo.",
+  enojado: "Con el ceño fruncido, pero de tu lado.",
+  sorprendido: "¿Ah, en serio? Cuéntame más.",
+  calmado: "En paz, respirando contigo.",
+  curioso: "Con curiosidad, escuchándote.",
+  amor: "Con cariño, Luis. Aquí estoy.",
+  miedo: "Un poco alerta, pero firme contigo.",
+};
 function setMoodFace(nombre) {
-  const el = $("face-mood");
-  if (el && nombre) el.textContent = String(nombre);
+  const n = String(nombre || "neutral");
+  const el = $("face-mood"); if (el) el.textContent = n;
+  const el2 = $("face-mood2"); if (el2) el2.textContent = n;
+  const line = $("mood-line");
+  if (line) line.textContent = MOOD_FRASES[n.toLowerCase()] || MOOD_FRASES.neutral;
   if (window._faceSetMood) window._faceSetMood(nombre);
 }
+
+
+/* ── tags de señal (widget derecho) ── */
+function tagOn(id, on) { const e = $(id); if (e) e.classList.toggle("on", !!on); }
+let _visionTimer = null;
 
 function manejar(m) {
   if (!m || !m.tipo) return;
@@ -697,7 +732,14 @@ function manejar(m) {
     if (window._faceSetLevel) window._faceSetLevel(v);
   } else if (m.tipo === "hablando") {
     setDot(Boolean(d) ? "hablando" : null);
+    // La voz real controla la cara: al hablar oscila viva; al callar, reposa.
+    if (window._faceSpeaking) window._faceSpeaking(Boolean(d));
+    window._signalLevel = d ? 0.85 : 0.12;
     if (!d) { ultimoHablar = null; }
+  } else if (m.tipo === "audio_pc") {
+    if (window._vizAudio) window._vizAudio(d || {});
+    tagOn("tag-audio", d && d.sonando);
+    if (d && d.sonando) window._signalLevel = Math.max(window._signalLevel || 0.12, (d.nivel||0)*0.8);
   } else if (m.tipo === "boca") {
     const txt = String(d || "").trim();
     if (txt) { ultimoHablar = addKaren(txt, true); }
@@ -707,13 +749,13 @@ function manejar(m) {
   } else if (m.tipo === "mic_status") {
     const modo = (d && d.modo) || "";
     if (modo === "activo") {
-      setDot("activo"); setEstado("Te oigo");
+      setDot("activo"); setEstado("Te oigo"); tagOn("tag-mic", true);
     } else if (modo === "procesando") {
       setDot("procesando"); setEstado("Procesando…");
     } else if (modo === "off") {
       setDot("off"); setEstado("Sin micrófono");
     } else {
-      setDot("reposo"); setEstado("Escuchando");
+      setDot("reposo"); setEstado("Escuchando"); tagOn("tag-mic", false);
     }
     if (d && d.mic) $("w-mic").textContent = String(d.mic).slice(0, 22);
   } else if (m.tipo === "estado") {
@@ -731,6 +773,11 @@ function manejar(m) {
       setDot("reposo"); setEstado("Escuchando");
     } else {
       setEstado(t.slice(0, 30));
+    }
+    if (low.includes("pantalla")) {
+      tagOn("tag-vision", true);
+      clearTimeout(_visionTimer);
+      _visionTimer = setTimeout(() => tagOn("tag-vision", false), 4000);
     }
   } else if (m.tipo === "voz_perfil") {
     const perfil = ((d && (d.perfil || d.activo)) || "normal").toLowerCase();
@@ -765,15 +812,13 @@ function cmd(texto) {
     const resp = (d && (d.respuesta || d.response || d.msg || "")) || "";
     if (resp) {
       addKaren(resp, false);
-      setDot("hablando");
       setEstado("Hablando");
-      if (window._faceSetLevel) window._faceSetLevel(0.9);
+      // El estado real de la cara lo maneja el evento "hablando" del bus (voz real).
+      // Solo liberamos el candado de comando tras una estimación holgada.
       ultimoHablar = null;
       setTimeout(() => {
-        setDot("reposo"); setEstado("Escuchando");
-        if (window._faceSetLevel) window._faceSetLevel(0.12);
         window._cmdBusy = false;
-      }, Math.min(8000, 1800 + resp.length * 45));
+      }, Math.min(9000, 2000 + resp.length * 45));
     } else {
       addSys("Sin respuesta del núcleo.");
       setDot("reposo"); setEstado("Escuchando");
@@ -829,6 +874,7 @@ function refreshSys() {
     $("w-sys").textContent = d.cpu + "% / " + (ram.uso != null ? ram.uso : "--") + "%";
     $("w-disk").textContent = (disco.uso != null ? disco.uso + "%" : "—") + (disco.total_gb ? " · " + disco.total_gb + "GB" : "");
     $("w-bat").textContent = bat.porcentaje == null ? "—" : bat.porcentaje + "%" + (bat.enchufado ? " ⚡" : "");
+    window._sysCpu = d.cpu;
     setBar("g-cpu", d.cpu);
     setBar("g-ram", ram.uso);
     setBar("g-disk", disco.uso);
@@ -849,6 +895,7 @@ function refreshLLM() {
     const lat = d.latencias || {};
     const motores = d.motores || {};
     $("w-model").textContent = (d.ultimo || "ninguno") + (d.ms ? " · " + d.ms + "ms" : "");
+    tagOn("tag-llm", (disp && disp.length > 0));
     document.querySelectorAll("#w-motores .m-row").forEach(row => {
       const sec = row.dataset.seccion;
       const sel = row.querySelector("select");
@@ -966,8 +1013,7 @@ function wxCode(code) {
 }
 loadWeather();
 setInterval(loadWeather, 15 * 60 * 1000);
-
-/* ── purple neural face mesh ── */
+/* ═══════════════ CARA NEURONAL DE KAREN ═══════════════ */
 (function initFace() {
   const canvas = $("face-canvas");
   if (!canvas) return;
@@ -975,12 +1021,359 @@ setInterval(loadWeather, 15 * 60 * 1000);
   let W = 0, H = 0, dpr = 1;
   let level = 0.12, targetLevel = 0.12;
   let mood = "neutral";
-  let blink = 0; // 0 open .. 1 closed
-  let nextBlink = performance.now() + 2200 + Math.random() * 3000;
+  let speaking = false;
+  let blink = 0, nextBlink = performance.now() + 2600 + Math.random() * 3000;
   let lookX = 0, lookY = 0, lookTX = 0, lookTY = 0;
   let t0 = performance.now();
-  const NODES = 96;
-  const nodes = [];
+
+  // Colores: morado + cian neón
+  const CYAN = [56, 242, 255];
+  const PURP = [168, 85, 247];
+  const PINK = [232, 121, 249];
+  const moodHue = {
+    feliz: [120, 240, 255], alegre: [120, 240, 255],
+    triste: [110, 130, 230], enojado: [255, 110, 150],
+    calmado: [90, 200, 255], neutral: [130, 190, 255],
+    curioso: [140, 210, 255], sorprendido: [180, 230, 255], amor: [255, 130, 210],
+  };
+
+  // ── Neuronas: nodos en esfera + conexiones fijas (axones) ──
+  const N = 120;
+  const neurons = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < N; i++) {
+    const y = 1 - (i / (N - 1)) * 2;
+    const radius = Math.sqrt(Math.max(0, 1 - y * y));
+    const theta = golden * i;
+    const cyan = (i % 3 === 0);
+    neurons.push({
+      ox: Math.cos(theta) * radius, oy: y, oz: Math.sin(theta) * radius,
+      phase: Math.random() * Math.PI * 2,
+      r: 0.9 + (i % 4) * 0.45,
+      col: cyan ? CYAN : PURP,
+      fire: 0,                       // 0..1 destello al recibir impulso
+      links: [],
+    });
+  }
+  // Conexiones (axones): cada neurona con sus 2-3 más cercanas
+  for (let i = 0; i < N; i++) {
+    const d = [];
+    for (let j = 0; j < N; j++) {
+      if (i === j) continue;
+      const dx = neurons[i].ox - neurons[j].ox;
+      const dy = neurons[i].oy - neurons[j].oy;
+      const dz = neurons[i].oz - neurons[j].oz;
+      d.push([dx * dx + dy * dy + dz * dz, j]);
+    }
+    d.sort((a, b) => a[0] - b[0]);
+    neurons[i].links = d.slice(0, 3).map(x => x[1]);
+  }
+
+  // ── Impulsos: viajan por los axones (sinapsis) ──
+  const impulses = [];
+  function lanzarImpulso() {
+    const a = Math.floor(Math.random() * N);
+    const b = neurons[a].links[Math.floor(Math.random() * neurons[a].links.length)];
+    impulses.push({ a, b, t: 0, speed: 0.015 + Math.random() * 0.03, col: neurons[a].col });
+  }
+
+  // Polvo estelar
+  const DUST = 44;
+  const dust = [];
+  for (let i = 0; i < DUST; i++) {
+    dust.push({ x: Math.random(), y: Math.random(), s: 0.3 + Math.random() * 1.1,
+      vx: (Math.random() - 0.5) * 0.00005, vy: (Math.random() - 0.5) * 0.00005,
+      tw: Math.random() * Math.PI * 2, col: (i % 2 ? CYAN : PURP) });
+  }
+
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(1, Math.floor(r.width)); H = Math.max(1, Math.floor(r.height));
+    canvas.width = Math.floor(W * dpr); canvas.height = Math.floor(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // APIs del HUD (no renombrar)
+  window._faceSetLevel = v => { targetLevel = Math.max(0.06, Math.min(1, Number(v) || 0)); };
+  window._faceSetMood = n => { mood = String(n || "neutral").toLowerCase(); };
+  window._faceSpeaking = on => { speaking = !!on; if (!on) targetLevel = 0.12; };
+
+  function rotY(x, z, a) { const c = Math.cos(a), s = Math.sin(a); return [x * c + z * s, -x * s + z * c]; }
+  function rotX(y, z, a) { const c = Math.cos(a), s = Math.sin(a); return [y * c - z * s, y * s + z * c]; }
+
+  function project(nu, t, R, cx, cy) {
+    const pulse = 1 + level * 0.1 + Math.sin(t * 0.0016 + nu.phase) * 0.028;
+    let x = nu.ox * R * pulse, y = nu.oy * R * pulse, z = nu.oz * R * pulse;
+    const spin = t * 0.00015 + level * 0.28;
+    [x, z] = rotY(x, z, spin);
+    [y, z] = rotX(y, z, 0.15 + Math.sin(t * 0.0004) * 0.05);
+    x += lookX * R * 0.05; y += lookY * R * 0.035;
+    return { x: cx + x, y: cy + y, z, depth: (z + R) / (2 * R) };
+  }
+
+  function drawEye(ex, ey, size, open, rgb, sx, sy) {
+    const lid = Math.max(0.1, open);
+    const ew = size * 1.1, eh = size * 0.7 * lid;
+    const g = ctx.createRadialGradient(ex - size * 0.15, ey - size * 0.15, 1, ex, ey, size * 1.3);
+    g.addColorStop(0, "rgba(240,252,255,0.97)");
+    g.addColorStop(0.55, "rgba(190,225,255,0.72)");
+    g.addColorStop(1, "rgba(" + rgb + ",0.12)");
+    ctx.beginPath(); ctx.ellipse(ex, ey, ew, eh, 0, 0, Math.PI * 2);
+    ctx.fillStyle = g; ctx.shadowColor = "rgba(" + rgb + ",0.75)"; ctx.shadowBlur = 20; ctx.fill(); ctx.shadowBlur = 0;
+    const irisR = size * 0.44 * (0.85 + lid * 0.15);
+    const ix = ex + sx * size * 0.2, iy = ey + sy * size * 0.13;
+    const ig = ctx.createRadialGradient(ix - irisR * 0.25, iy - irisR * 0.25, irisR * 0.1, ix, iy, irisR);
+    ig.addColorStop(0, "#eafcff"); ig.addColorStop(0.25, "rgb(" + rgb + ")");
+    ig.addColorStop(0.7, "#5b21b6"); ig.addColorStop(1, "#1e1065");
+    ctx.beginPath(); ctx.arc(ix, iy, irisR, 0, Math.PI * 2); ctx.fillStyle = ig; ctx.fill();
+    ctx.beginPath(); ctx.arc(ix, iy, Math.max(2, irisR * (0.42 - level * 0.08)), 0, Math.PI * 2);
+    ctx.fillStyle = "#08040f"; ctx.fill();
+    ctx.beginPath(); ctx.arc(ix - irisR * 0.28, iy - irisR * 0.28, irisR * 0.16, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.92)"; ctx.fill();
+    if (lid < 0.97) {
+      ctx.beginPath(); ctx.ellipse(ex, ey - eh * 0.15, ew * 1.02, eh * (1.05 - lid), 0, Math.PI, 0);
+      ctx.fillStyle = "rgba(14,10,32," + (0.55 + (1 - lid) * 0.35) + ")"; ctx.fill();
+    }
+  }
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const t = now - t0;
+    if (speaking) {
+      const env = 0.5 + 0.32 * Math.sin(t * 0.018) + 0.14 * Math.sin(t * 0.041 + 1.3);
+      targetLevel = Math.max(0.35, Math.min(1, 0.55 + env * 0.4));
+    }
+    level += (targetLevel - level) * (speaking ? 0.35 : 0.08);
+    const L = level;
+
+    if (now > nextBlink && blink <= 0) blink = 0.001;
+    if (blink > 0) { blink += 0.15; if (blink >= 1) { blink = 0; nextBlink = now + 2200 + Math.random() * 4200; } }
+    const open = blink <= 0 ? 1 : (blink < 0.5 ? 1 - blink * 2 : (blink - 0.5) * 2);
+    if (Math.random() < 0.008) { lookTX = (Math.random() - 0.5) * 1.2; lookTY = (Math.random() - 0.5) * 0.6; }
+    lookX += (lookTX - lookX) * 0.04; lookY += (lookTY - lookY) * 0.04;
+
+    // lanzar impulsos: más frecuentes al hablar/pensar
+    const tasa = speaking ? 0.5 : 0.14 + L * 0.3;
+    if (Math.random() < tasa) lanzarImpulso();
+
+    ctx.clearRect(0, 0, W, H);
+    const cx = W * 0.5, cy = H * 0.47;
+    const R = Math.min(W, H) * 0.33 * (1 + L * 0.05);
+    const col = moodHue[mood] || moodHue.neutral;
+    const rgb = col[0] + "," + col[1] + "," + col[2];
+
+    // nebulosa
+    const bg = ctx.createRadialGradient(cx, cy, 4, cx, cy, R * 2.5);
+    bg.addColorStop(0, "rgba(124,58,237," + (0.18 + L * 0.2) + ")");
+    bg.addColorStop(0.3, "rgba(34,211,238," + (0.06 + L * 0.08) + ")");
+    bg.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+    // polvo
+    for (const p of dust) {
+      p.x += p.vx; p.y += p.vy; p.tw += 0.03;
+      if (p.x < 0) p.x = 1; if (p.x > 1) p.x = 0; if (p.y < 0) p.y = 1; if (p.y > 1) p.y = 0;
+      const tw = 0.4 + Math.abs(Math.sin(p.tw)) * 0.6;
+      ctx.beginPath(); ctx.arc(p.x * W, p.y * H, p.s, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(" + p.col.join(",") + "," + (tw * (0.22 + L * 0.22)) + ")"; ctx.fill();
+    }
+
+    // proyectar neuronas
+    const pts = neurons.map(nu => project(nu, t, R, cx, cy));
+
+    // axones (conexiones fijas)
+    for (let i = 0; i < N; i++) {
+      const a = pts[i];
+      for (const j of neurons[i].links) {
+        if (j < i) continue; // evitar duplicar
+        const b = pts[j];
+        const depth = (a.depth + b.depth) * 0.5;
+        const alpha = 0.10 * depth * (0.5 + L * 0.5);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = "rgba(140,180,255," + alpha + ")";
+        ctx.lineWidth = 0.5 + depth * 0.9; ctx.stroke();
+      }
+    }
+
+    // impulsos viajando
+    for (let k = impulses.length - 1; k >= 0; k--) {
+      const im = impulses[k];
+      im.t += im.speed;
+      if (im.t >= 1) {
+        neurons[im.b].fire = 1;          // la neurona destino se enciende
+        // propagar a veces
+        if (Math.random() < 0.45) {
+          const nb = neurons[im.b].links[Math.floor(Math.random() * neurons[im.b].links.length)];
+          impulses.push({ a: im.b, b: nb, t: 0, speed: im.speed, col: im.col });
+        }
+        impulses.splice(k, 1); continue;
+      }
+      const a = pts[im.a], b = pts[im.b];
+      const x = a.x + (b.x - a.x) * im.t, y = a.y + (b.y - a.y) * im.t;
+      const c = im.col;
+      ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0.95)";
+      ctx.shadowColor = "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",1)";
+      ctx.shadowBlur = 12; ctx.fill(); ctx.shadowBlur = 0;
+      // estela
+      const tx = a.x + (b.x - a.x) * Math.max(0, im.t - 0.12);
+      const ty = a.y + (b.y - a.y) * Math.max(0, im.t - 0.12);
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y);
+      ctx.strokeStyle = "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0.5)"; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    // neuronas (con destello al recibir impulso)
+    const order = pts.map((p, i) => [p, i]).sort((a, b) => a[0].z - b[0].z);
+    for (const [p, i] of order) {
+      if (p.z < -R * 0.35) continue;
+      const nu = neurons[i];
+      nu.fire *= 0.92;                    // decae el destello
+      const rr = nu.r * (0.5 + p.depth) * (0.85 + L * 0.35) * (1 + nu.fire * 1.5);
+      const a = (0.2 + p.depth * 0.6) + nu.fire * 0.4;
+      ctx.beginPath(); ctx.arc(p.x, p.y, rr, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(" + nu.col[0] + "," + nu.col[1] + "," + nu.col[2] + "," + a + ")";
+      ctx.shadowColor = "rgba(" + nu.col[0] + "," + nu.col[1] + "," + nu.col[2] + ",0.9)";
+      ctx.shadowBlur = 4 + L * 10 + nu.fire * 14; ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+
+    // núcleo
+    const core = ctx.createRadialGradient(cx, cy, 1, cx, cy, R * 0.48);
+    core.addColorStop(0, "rgba(255,255,255," + (0.2 + L * 0.4) + ")");
+    core.addColorStop(0.3, "rgba(" + rgb + "," + (0.28 + L * 0.3) + ")");
+    core.addColorStop(1, "rgba(" + rgb + ",0)");
+    ctx.fillStyle = core; ctx.beginPath(); ctx.arc(cx, cy, R * 0.48, 0, Math.PI * 2); ctx.fill();
+
+    // anillos
+    ctx.strokeStyle = "rgba(56,242,255," + (0.12 + L * 0.18) + ")"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.26, R * 1.05, t * 0.0001, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([3, 9]);
+    ctx.strokeStyle = "rgba(168,85,247," + (0.1 + L * 0.14) + ")";
+    ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.44, R * 1.22, -t * 0.00018, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ── CARA al centro ──
+    const eyeY = cy - R * 0.10, eyeX = R * 0.26, eyeSize = R * 0.145;
+    drawEye(cx - eyeX, eyeY, eyeSize, open, rgb, lookX, lookY);
+    drawEye(cx + eyeX, eyeY, eyeSize, open, rgb, lookX, lookY);
+
+    const mouthY = cy + R * 0.28, mouthW = R * 0.30;
+    if (speaking) {
+      const o2 = 0.10 + L * 0.55 + Math.abs(Math.sin(t * 0.022)) * 0.20;
+      const mh = R * 0.02 + mouthW * o2 * 0.9;
+      ctx.beginPath(); ctx.ellipse(cx, mouthY, mouthW * 0.6, mh, 0, 0, Math.PI * 2);
+      const mg = ctx.createRadialGradient(cx, mouthY, 1, cx, mouthY, mouthW * 0.6);
+      mg.addColorStop(0, "rgba(30,8,50,0.95)"); mg.addColorStop(1, "rgba(" + rgb + ",0.35)");
+      ctx.fillStyle = mg; ctx.shadowColor = "rgba(" + rgb + ",0.6)"; ctx.shadowBlur = 14 + L * 20; ctx.fill(); ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.ellipse(cx, mouthY, mouthW * 0.6, mh, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(" + rgb + ",0.85)"; ctx.lineWidth = 2.2; ctx.stroke();
+    } else {
+      const smile = (mood.includes("feliz") || mood.includes("alegr")) ? 0.30
+        : (mood.includes("trist") ? -0.16 : 0.10);
+      ctx.beginPath(); ctx.moveTo(cx - mouthW, mouthY);
+      ctx.quadraticCurveTo(cx, mouthY + mouthW * smile, cx + mouthW, mouthY);
+      ctx.strokeStyle = "rgba(" + rgb + ",0.55)"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.stroke();
+    }
+  }
+  requestAnimationFrame(frame);
+  setTimeout(resize, 80); setTimeout(resize, 400);
+})();
+
+/* ═══════════════ PULSO NEURAL (widget izquierdo) ═══════════════ */
+(function initPulse() {
+  const canvas = $("pulse-canvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  let W = 0, H = 0, dpr = 1;
+  const data = [];
+  const MAX = 90;
+  let t0 = performance.now();
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(1, Math.floor(r.width)); H = Math.max(1, Math.floor(r.height));
+    canvas.width = Math.floor(W * dpr); canvas.height = Math.floor(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", resize); resize();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const t = now - t0;
+    // Señal tipo latido/EEG: base + picos ocasionales según CPU global
+    const cpu = (window._sysCpu || 20) / 100;
+    let v = Math.sin(t * 0.006) * 0.12 + Math.sin(t * 0.021) * 0.06;
+    // pico agudo periódico (latido)
+    const beat = (t % 1400) / 1400;
+    if (beat < 0.05) v += (1 - beat / 0.05) * (0.5 + cpu * 0.5);
+    else if (beat < 0.09) v -= (0.2 + cpu * 0.2);
+    v += (Math.random() - 0.5) * 0.05 * (0.5 + cpu);
+    data.push(v); if (data.length > MAX) data.shift();
+
+    ctx.clearRect(0, 0, W, H);
+    const mid = H * 0.5;
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+      const x = (i / (MAX - 1)) * W;
+      const y = mid - data[i] * H * 0.42;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, "rgba(34,211,238,0.15)");
+    grad.addColorStop(0.7, "rgba(56,242,255,0.9)");
+    grad.addColorStop(1, "rgba(232,121,249,0.95)");
+    ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.lineJoin = "round";
+    ctx.shadowColor = "rgba(56,242,255,0.7)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+  }
+  requestAnimationFrame(frame); setTimeout(resize, 120);
+})();
+
+/* ═══════════════ SEÑAL DE VOZ (widget derecho superior) ═══════════════ */
+(function initSignal() {
+  const canvas = $("signal-canvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  let W = 0, H = 0, dpr = 1, t0 = performance.now();
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(1, Math.floor(r.width)); H = Math.max(1, Math.floor(r.height));
+    canvas.width = Math.floor(W * dpr); canvas.height = Math.floor(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", resize); resize();
+  const phases = Array.from({ length: 40 }, () => Math.random() * Math.PI * 2);
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const t = now - t0;
+    const lvl = window._signalLevel || 0.12;   // sube al hablar
+    ctx.clearRect(0, 0, W, H);
+    const mid = H * 0.5, n = 40;
+    for (let i = 0; i < n; i++) {
+      const x = (i / (n - 1)) * W;
+      const wob = Math.sin(t * 0.006 + phases[i]) * 0.5 + 0.5;
+      const amp = (0.08 + lvl * 0.85 * wob) * H * 0.42;
+      ctx.beginPath(); ctx.moveTo(x, mid - amp); ctx.lineTo(x, mid + amp);
+      const c = i % 3 === 0 ? "56,242,255" : "168,85,247";
+      ctx.strokeStyle = "rgba(" + c + "," + (0.4 + lvl * 0.5) + ")";
+      ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.stroke();
+    }
+  }
+  requestAnimationFrame(frame); setTimeout(resize, 120);
+})();
+(function initViz() {
+  const canvas = $("viz-canvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const idle = $("viz-idle");
+  let W = 0, H = 0, dpr = 1;
+  let bands = new Array(12).fill(0);
+  let target = new Array(12).fill(0);
+  let level = 0, targetLevel = 0;
+  let sonando = false;
+  let lastData = 0;
 
   function resize() {
     const r = canvas.getBoundingClientRect();
@@ -994,238 +1387,71 @@ setInterval(loadWeather, 15 * 60 * 1000);
   window.addEventListener("resize", resize);
   resize();
 
-  // fibonacci-ish sphere nodes for neural mesh
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < NODES; i++) {
-    const y = 1 - (i / (NODES - 1)) * 2;
-    const radius = Math.sqrt(Math.max(0, 1 - y * y));
-    const theta = golden * i;
-    const x = Math.cos(theta) * radius;
-    const z = Math.sin(theta) * radius;
-    // squash into face oval, bias front hemisphere
-    nodes.push({
-      ox: x * 0.92, oy: y * 1.12, oz: z * 0.85,
-      phase: Math.random() * Math.PI * 2,
-      speed: 0.35 + Math.random() * 0.9,
-      r: 1.1 + (i % 4) * 0.35
-    });
-  }
-
-  const moodHue = {
-    feliz: [232, 160, 255], alegre: [240, 170, 255],
-    triste: [140, 120, 200], enojado: [255, 120, 150],
-    calmado: [180, 160, 255], neutral: [200, 150, 255],
-    curioso: [190, 140, 255], sorprendido: [230, 180, 255]
-  };
-
-  window._faceSetLevel = v => { targetLevel = Math.max(0.06, Math.min(1, Number(v) || 0)); };
-  window._faceSetMood = n => { mood = String(n || "neutral").toLowerCase(); };
-
-  function rotY(x, z, a) {
-    const c = Math.cos(a), s = Math.sin(a);
-    return { x: x * c + z * s, z: -x * s + z * c };
-  }
-  function rotX(y, z, a) {
-    const c = Math.cos(a), s = Math.sin(a);
-    return { y: y * c - z * s, z: y * s + z * c };
-  }
-
-  function project(n, t, R, cx, cy) {
-    const pulse = 1 + level * 0.08 + Math.sin(t * 0.0014 + n.phase) * 0.025;
-    let x = n.ox * R * pulse, y = n.oy * R * pulse, z = n.oz * R * pulse;
-    const spin = t * 0.00018 + level * 0.25;
-    let r1 = rotY(x, z, spin);
-    x = r1.x; z = r1.z;
-    let r2 = rotX(y, z, 0.18 + Math.sin(t * 0.0004) * 0.05);
-    y = r2.y; z = r2.z;
-    // gentle look bias
-    x += lookX * R * 0.06;
-    y += lookY * R * 0.04;
-    return { x: cx + x, y: cy + y, z, hot: z > R * 0.05 };
-  }
-
-  function drawEye(ex, ey, size, open, rgb, pupilShiftX, pupilShiftY) {
-    // sclera glow
-    const lid = Math.max(0.08, open);
-    const ew = size * 1.15;
-    const eh = size * 0.72 * lid;
-
-    // soft eye white
-    const g = ctx.createRadialGradient(ex - size * 0.15, ey - size * 0.15, 1, ex, ey, size * 1.3);
-    g.addColorStop(0, "rgba(255,245,255,0.95)");
-    g.addColorStop(0.55, "rgba(230,210,255,0.75)");
-    g.addColorStop(1, "rgba(" + rgb + ",0.15)");
-    ctx.beginPath();
-    ctx.ellipse(ex, ey, ew, eh, 0, 0, Math.PI * 2);
-    ctx.fillStyle = g;
-    ctx.shadowColor = "rgba(" + rgb + ",0.65)";
-    ctx.shadowBlur = 18;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // iris
-    const irisR = size * 0.42 * (0.85 + lid * 0.15);
-    const ix = ex + pupilShiftX * size * 0.18;
-    const iy = ey + pupilShiftY * size * 0.12;
-    const ig = ctx.createRadialGradient(ix - irisR * 0.25, iy - irisR * 0.25, irisR * 0.1, ix, iy, irisR);
-    ig.addColorStop(0, "#f3e8ff");
-    ig.addColorStop(0.25, "rgb(" + rgb + ")");
-    ig.addColorStop(0.7, "#6d28d9");
-    ig.addColorStop(1, "#2e1065");
-    ctx.beginPath();
-    ctx.arc(ix, iy, irisR, 0, Math.PI * 2);
-    ctx.fillStyle = ig;
-    ctx.fill();
-
-    // pupil
-    const pr = irisR * (0.42 - level * 0.08);
-    ctx.beginPath();
-    ctx.arc(ix, iy, Math.max(2, pr), 0, Math.PI * 2);
-    ctx.fillStyle = "#0b0414";
-    ctx.fill();
-
-    // specular highlights
-    ctx.beginPath();
-    ctx.arc(ix - irisR * 0.28, iy - irisR * 0.28, irisR * 0.16, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(ix + irisR * 0.22, iy + irisR * 0.18, irisR * 0.07, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.fill();
-
-    // upper lid shade
-    if (lid < 0.98) {
-      ctx.beginPath();
-      ctx.ellipse(ex, ey - eh * 0.15, ew * 1.02, eh * (1.05 - lid), 0, Math.PI, 0);
-      ctx.fillStyle = "rgba(20,8,40," + (0.55 + (1 - lid) * 0.35) + ")";
-      ctx.fill();
+  // API: recibe {nivel, sonando, bandas[12]} desde el bus (audio_pc)
+  window._vizAudio = d => {
+    if (Array.isArray(d.bandas) && d.bandas.length) {
+      for (let i = 0; i < 12; i++) target[i] = Number(d.bandas[i]) || 0;
     }
-
-    // eye outline
-    ctx.beginPath();
-    ctx.ellipse(ex, ey, ew, eh, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(" + rgb + ",0.55)";
-    ctx.lineWidth = 1.4;
-    ctx.stroke();
-  }
+    targetLevel = Math.max(0, Math.min(1, Number(d.nivel) || 0));
+    sonando = !!d.sonando;
+    lastData = performance.now();
+    if (idle) idle.classList.toggle("hidden", sonando);
+  };
 
   function frame(now) {
     requestAnimationFrame(frame);
-    const t = now - t0;
-    level += (targetLevel - level) * 0.08;
-
-    // blink schedule
-    if (now > nextBlink && blink <= 0) {
-      blink = 0.001;
-    }
-    if (blink > 0) {
-      blink += 0.14;
-      if (blink >= 1) {
-        blink = 0;
-        nextBlink = now + 1800 + Math.random() * 4200;
-      }
-    }
-    const open = blink <= 0 ? 1 : (blink < 0.5 ? 1 - blink * 2 : (blink - 0.5) * 2);
-
-    // idle look around
-    if (Math.random() < 0.01) {
-      lookTX = (Math.random() - 0.5) * 1.2;
-      lookTY = (Math.random() - 0.5) * 0.6;
-    }
-    lookX += (lookTX - lookX) * 0.04;
-    lookY += (lookTY - lookY) * 0.04;
+    // Si dejó de llegar data por >1.2s, decae a reposo
+    if (now - lastData > 1200) { sonando = false; if (idle) idle.classList.remove("hidden"); }
+    for (let i = 0; i < 12; i++) bands[i] += (target[i] - bands[i]) * 0.25;
+    level += (targetLevel - level) * 0.2;
 
     ctx.clearRect(0, 0, W, H);
-    const cx = W * 0.5, cy = H * 0.48;
-    const R = Math.min(W, H) * 0.34 * (1 + level * 0.04);
-    const col = moodHue[mood] || moodHue.neutral;
-    const rgb = col[0] + "," + col[1] + "," + col[2];
-    const L = level;
+    if (!sonando && level < 0.02) return;
 
-    // ambient core glow
-    const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, R * 1.55);
-    g.addColorStop(0, "rgba(192,132,252," + (0.22 + L * 0.28) + ")");
-    g.addColorStop(0.4, "rgba(124,58,237," + (0.10 + L * 0.12) + ")");
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-
-    // project nodes
-    const pts = nodes.map(n => project(n, t, R, cx, cy));
-
-    // neural links
-    const thr = R * (0.72 + L * 0.2);
-    for (let i = 0; i < pts.length; i++) {
-      let links = 0;
-      for (let j = i + 1; j < pts.length && links < 5; j++) {
-        const a = pts[i], b = pts[j];
-        if (!a.hot && !b.hot) continue;
-        const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (dist > thr) continue;
-        links++;
-        const depth = ((a.z + b.z) * 0.5 + R) / (2 * R);
-        const alpha = (1 - dist / thr) * 0.4 * depth * (0.55 + L * 0.6);
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.strokeStyle = "rgba(" + rgb + "," + alpha + ")";
-        ctx.lineWidth = 0.6 + depth * 1.5;
-        ctx.stroke();
-      }
-    }
-
-    // nodes
-    const sorted = pts.slice().sort((a, b) => a.z - b.z);
-    for (let i = 0; i < sorted.length; i++) {
-      const p = sorted[i];
-      if (p.z < -R * 0.25) continue;
-      const depth = (p.z + R) / (2 * R);
-      const n = nodes[i % nodes.length];
-      const rr = n.r * (0.55 + depth) * (0.9 + L * 0.35);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, rr, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(" + rgb + "," + (0.25 + depth * 0.65) + ")";
-      ctx.shadowColor = "rgba(" + rgb + ",0.9)";
-      ctx.shadowBlur = 6 + L * 10;
+    const n = 12;
+    const cx = W / 2, midY = H * 0.56;
+    const gap = 3;
+    const bw = (W - gap * (n * 2)) / (n * 2);
+    // Barras espejadas desde el centro hacia afuera
+    for (let i = 0; i < n; i++) {
+      const v = bands[i];
+      const bh = Math.max(2, v * H * 0.42);
+      const grad = ctx.createLinearGradient(0, midY - bh, 0, midY + bh);
+      grad.addColorStop(0, "rgba(232,121,249,0.95)");
+      grad.addColorStop(0.5, "rgba(168,85,247,0.85)");
+      grad.addColorStop(1, "rgba(124,58,237,0.55)");
+      ctx.fillStyle = grad;
+      ctx.shadowColor = "rgba(192,132,252,0.6)";
+      ctx.shadowBlur = 8;
+      // derecha
+      let xR = cx + gap + i * (bw + gap);
+      roundRect(ctx, xR, midY - bh, bw, bh * 2, bw / 2);
+      // izquierda (espejo)
+      let xL = cx - gap - (i + 1) * (bw + gap);
+      roundRect(ctx, xL, midY - bh, bw, bh * 2, bw / 2);
       ctx.fill();
     }
     ctx.shadowBlur = 0;
 
-    // outer rings
-    ctx.strokeStyle = "rgba(" + rgb + "," + (0.18 + L * 0.22) + ")";
-    ctx.lineWidth = 1.2;
+    // Línea base luminosa
     ctx.beginPath();
-    ctx.ellipse(cx, cy, R * 1.05, R * 1.22, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([4, 8]);
-    ctx.strokeStyle = "rgba(" + rgb + "," + (0.12 + L * 0.15) + ")";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, R * 1.22, R * 1.38, t * 0.0002, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // beautiful eyes
-    const eyeY = cy - R * 0.12;
-    const eyeX = R * 0.28;
-    const eyeSize = R * 0.16;
-    drawEye(cx - eyeX, eyeY, eyeSize, open, rgb, lookX, lookY);
-    drawEye(cx + eyeX, eyeY, eyeSize, open, rgb, lookX, lookY);
-
-    // soft smile
-    const smile = (mood.includes("feliz") || mood.includes("alegr")) ? 0.28
-      : (mood.includes("trist") ? -0.18 : 0.1 + L * 0.08);
-    ctx.beginPath();
-    ctx.arc(cx, cy + R * 0.22, R * 0.22, Math.PI * (0.12 - smile), Math.PI * (0.88 + smile));
-    ctx.strokeStyle = "rgba(" + rgb + "," + (0.35 + L * 0.3) + ")";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
+    ctx.moveTo(0, midY); ctx.lineTo(W, midY);
+    ctx.strokeStyle = "rgba(192,132,252," + (0.15 + level * 0.4) + ")";
+    ctx.lineWidth = 1;
     ctx.stroke();
   }
+  function roundRect(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  }
   requestAnimationFrame(frame);
-  setTimeout(resize, 80);
-  setTimeout(resize, 400);
+  setTimeout(resize, 120);
 })();
 
 /* compat stubs */
@@ -1242,8 +1468,6 @@ window.addMsg = function (role, text) {
   else addKaren(text, false);
 };
 
-addSys("KAREN en línea — HUD glass morado listo.");
+addSys("KAREN en línea — puedo ver tu pantalla, oír tu música y cerrar apps.");
 conectar();
 </script>
-</body>
-</html>

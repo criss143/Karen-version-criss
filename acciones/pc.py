@@ -553,11 +553,38 @@ class PCControl:
                 return v
         return raw.replace(" ", "") or raw
 
+    def _cerrar_pestana_activa(self) -> bool:
+        """Cierra solo la pestaña activa si la ventana en primer plano es un
+        navegador. Devuelve True si lo intentó; False si no había navegador al
+        frente o faltan dependencias (nunca cierra a ciegas)."""
+        try:
+            import pygetwindow as gw
+            import pyautogui
+        except Exception:
+            return False
+        try:
+            win = gw.getActiveWindow()
+            titulo = (getattr(win, "title", "") or "").lower()
+            navegadores = ("chrome", "edge", "opera", "firefox", "brave",
+                           "vivaldi", "youtube")
+            if not any(n in titulo for n in navegadores):
+                return False
+            pyautogui.hotkey("ctrl", "w")
+            return True
+        except Exception:
+            return False
+
     def cerrar_app(self, nombre: str) -> str:
         clave = self._resolver_clave(nombre)
         if clave == "youtube":
-            # Cierra pestañas no; mata navegador principal si pidieron youtube
-            procs = _PROC.get("chrome", ["chrome"])
+            # YouTube vive dentro del navegador. Matar Chrome cerraría TODAS tus
+            # pestañas (destructivo). Intentamos cerrar solo la pestaña activa.
+            cerrado = self._cerrar_pestana_activa()
+            if cerrado:
+                return "Cierro la pestaña de YouTube."
+            return ("YouTube está dentro del navegador. Si quieres cierro el "
+                    "navegador completo, pero perderías las demás pestañas. "
+                    "Dime 'cierra Chrome' si es lo que quieres.")
         else:
             procs = _PROC.get(clave)
             if not procs:

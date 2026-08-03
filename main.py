@@ -66,6 +66,16 @@ def main():
 
     acciones.webmon.iniciar_bucle()
 
+    # Oído musical: captura el sonido de la PC y lo manda al HUD (visualizador)
+    audio_pc = None
+    try:
+        from audio_sistema import AudioSistema
+        audio_pc = AudioSistema(bus)
+        audio_pc.iniciar()
+    except Exception as e:
+        print(f"  Audio PC no disponible: {e}")
+        audio_pc = None
+
     # Precarga STT + LLM en background (1er comando sin espera larga)
     def _warm():
         try:
